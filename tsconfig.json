@@ -1,0 +1,6 @@
+{
+  "extends": "@youtube.pub/config/tsconfig.base.json",
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
+}

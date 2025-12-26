@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "scheme": "youtube.pub",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "bundler": "metro"
+    },
+    "name": "youtube.pub",
+    "slug": "youtube.pub",
+    "plugins": ["expo-font"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

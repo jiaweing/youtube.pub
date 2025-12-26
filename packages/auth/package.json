@@ -1,0 +1,27 @@
+{
+  "name": "@youtube.pub/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "^5",
+    "@youtube.pub/config": "workspace:*"
+  },
+  "dependencies": {
+    "better-auth": "catalog:",
+    "@better-auth/expo": "catalog:",
+    "@polar-sh/better-auth": "catalog:",
+    "@polar-sh/sdk": "^0.34.16",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@youtube.pub/env": "workspace:*",
+    "@youtube.pub/db": "workspace:*"
+  }
+}
