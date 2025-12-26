@@ -3,7 +3,6 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!**/.next",
       "!**/dist",
       "!**/.turbo",
@@ -23,9 +22,5 @@
       "!**/convex/_generated"
     ]
   },
-  "extends": [
-    "ultracite/core",
-    "ultracite/next",
-    "ultracite/react"
-  ]
+  "extends": ["ultracite/core", "ultracite/next", "ultracite/react"]
 }

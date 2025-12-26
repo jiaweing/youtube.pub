@@ -1,5 +1,5 @@
-import { expo } from '@better-auth/expo';
-import { polar, checkout, portal } from "@polar-sh/better-auth";
+import { expo } from "@better-auth/expo";
+import { checkout, polar, portal } from "@polar-sh/better-auth";
 import { client } from "@youtube.pub/db";
 import { env } from "@youtube.pub/env/server";
 import { betterAuth } from "better-auth";
@@ -39,6 +39,6 @@ export const auth = betterAuth({
         portal(),
       ],
     }),
-    expo()
+    expo(),
   ],
 });

@@ -1,6 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Card, Chip, useThemeColor } from "heroui-native";
-import { Text, View, Pressable } from "react-native";
+import { Card, useThemeColor } from "heroui-native";
+import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 import { SignIn } from "@/components/sign-in";
@@ -17,23 +16,25 @@ export default function Home() {
 
   return (
     <Container className="p-6">
-      <View className="py-4 mb-6">
-        <Text className="text-4xl font-bold text-foreground mb-2">BETTER T STACK</Text>
+      <View className="mb-6 py-4">
+        <Text className="mb-2 font-bold text-4xl text-foreground">
+          BETTER T STACK
+        </Text>
       </View>
 
       {session?.user ? (
-        <Card variant="secondary" className="mb-6 p-4">
-          <Text className="text-foreground text-base mb-2">
+        <Card className="mb-6 p-4" variant="secondary">
+          <Text className="mb-2 text-base text-foreground">
             Welcome, <Text className="font-medium">{session.user.name}</Text>
           </Text>
-          <Text className="text-muted text-sm mb-4">{session.user.email}</Text>
+          <Text className="mb-4 text-muted text-sm">{session.user.email}</Text>
           <Pressable
-            className="bg-danger py-3 px-4 rounded-lg self-start active:opacity-70"
+            className="self-start rounded-lg bg-danger px-4 py-3 active:opacity-70"
             onPress={() => {
               authClient.signOut();
             }}
           >
-            <Text className="text-foreground font-medium">Sign Out</Text>
+            <Text className="font-medium text-foreground">Sign Out</Text>
           </Pressable>
         </Card>
       ) : null}

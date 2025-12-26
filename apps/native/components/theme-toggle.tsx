@@ -13,21 +13,21 @@ export function ThemeToggle() {
 
   return (
     <Pressable
+      className="px-2.5"
       onPress={() => {
         if (Platform.OS === "ios") {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
         toggleTheme();
       }}
-      className="px-2.5"
     >
       {isLight ? (
-        <Animated.View key="moon" entering={ZoomIn} exiting={FadeOut}>
-          <StyledIonicons name="moon" size={20} className="text-foreground" />
+        <Animated.View entering={ZoomIn} exiting={FadeOut} key="moon">
+          <StyledIonicons className="text-foreground" name="moon" size={20} />
         </Animated.View>
       ) : (
-        <Animated.View key="sun" entering={ZoomIn} exiting={FadeOut}>
-          <StyledIonicons name="sunny" size={20} className="text-foreground" />
+        <Animated.View entering={ZoomIn} exiting={FadeOut} key="sun">
+          <StyledIonicons className="text-foreground" name="sunny" size={20} />
         </Animated.View>
       )}
     </Pressable>

@@ -1,5 +1,5 @@
 import { cn } from "heroui-native";
-import { type PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import { ScrollView, View, type ViewProps } from "react-native";
 import Animated, { type AnimatedProps } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +10,11 @@ type Props = AnimatedProps<ViewProps> & {
   className?: string;
 };
 
-export function Container({ children, className, ...props }: PropsWithChildren<Props>) {
+export function Container({
+  children,
+  className,
+  ...props
+}: PropsWithChildren<Props>) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -21,7 +25,9 @@ export function Container({ children, className, ...props }: PropsWithChildren<P
       }}
       {...props}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>{children}</ScrollView>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {children}
+      </ScrollView>
     </AnimatedView>
   );
 }

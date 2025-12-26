@@ -2,7 +2,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useThemeColor } from "heroui-native";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { Pressable, Text } from "react-native";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -31,13 +31,15 @@ function DrawerLayout() {
         options={{
           headerTitle: "Home",
           drawerLabel: ({ color, focused }) => (
-            <Text style={{ color: focused ? color : themeColorForeground }}>Home</Text>
+            <Text style={{ color: focused ? color : themeColorForeground }}>
+              Home
+            </Text>
           ),
           drawerIcon: ({ size, color, focused }) => (
             <Ionicons
+              color={focused ? color : themeColorForeground}
               name="home-outline"
               size={size}
-              color={focused ? color : themeColorForeground}
             />
           ),
         }}
@@ -47,19 +49,25 @@ function DrawerLayout() {
         options={{
           headerTitle: "Tabs",
           drawerLabel: ({ color, focused }) => (
-            <Text style={{ color: focused ? color : themeColorForeground }}>Tabs</Text>
+            <Text style={{ color: focused ? color : themeColorForeground }}>
+              Tabs
+            </Text>
           ),
           drawerIcon: ({ size, color, focused }) => (
             <MaterialIcons
+              color={focused ? color : themeColorForeground}
               name="border-bottom"
               size={size}
-              color={focused ? color : themeColorForeground}
             />
           ),
           headerRight: () => (
-            <Link href="/modal" asChild>
+            <Link asChild href="/modal">
               <Pressable className="mr-4">
-                <Ionicons name="add-outline" size={24} color={themeColorForeground} />
+                <Ionicons
+                  color={themeColorForeground}
+                  name="add-outline"
+                  size={24}
+                />
               </Pressable>
             </Link>
           ),

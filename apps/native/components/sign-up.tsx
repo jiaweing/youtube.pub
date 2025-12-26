@@ -1,6 +1,12 @@
 import { Card, useThemeColor } from "heroui-native";
 import { useState } from "react";
-import { ActivityIndicator, Text, TextInput, Pressable, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { authClient } from "@/lib/auth-client";
 
@@ -36,7 +42,7 @@ function signUpHandler({
       onFinished() {
         setIsLoading(false);
       },
-    },
+    }
   );
 }
 
@@ -66,51 +72,51 @@ export function SignUp() {
   }
 
   return (
-    <Card variant="secondary" className="mt-6 p-4">
+    <Card className="mt-6 p-4" variant="secondary">
       <Card.Title className="mb-4">Create Account</Card.Title>
 
       {error && (
-        <View className="mb-4 p-3 bg-danger/10 rounded-lg">
+        <View className="mb-4 rounded-lg bg-danger/10 p-3">
           <Text className="text-danger text-sm">{error}</Text>
         </View>
       )}
 
       <TextInput
-        className="mb-3 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-        placeholder="Name"
-        value={name}
+        className="mb-3 rounded-lg border border-divider bg-surface px-4 py-3 text-foreground"
         onChangeText={setName}
+        placeholder="Name"
         placeholderTextColor={mutedColor}
+        value={name}
       />
 
       <TextInput
-        className="mb-3 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        placeholderTextColor={mutedColor}
-        keyboardType="email-address"
         autoCapitalize="none"
+        className="mb-3 rounded-lg border border-divider bg-surface px-4 py-3 text-foreground"
+        keyboardType="email-address"
+        onChangeText={setEmail}
+        placeholder="Email"
+        placeholderTextColor={mutedColor}
+        value={email}
       />
 
       <TextInput
-        className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-        placeholder="Password"
-        value={password}
+        className="mb-4 rounded-lg border border-divider bg-surface px-4 py-3 text-foreground"
         onChangeText={setPassword}
+        placeholder="Password"
         placeholderTextColor={mutedColor}
         secureTextEntry
+        value={password}
       />
 
       <Pressable
-        onPress={handlePress}
+        className="flex-row items-center justify-center rounded-lg bg-accent p-4 active:opacity-70"
         disabled={isLoading}
-        className="bg-accent p-4 rounded-lg flex-row justify-center items-center active:opacity-70"
+        onPress={handlePress}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={foregroundColor} />
+          <ActivityIndicator color={foregroundColor} size="small" />
         ) : (
-          <Text className="text-foreground font-medium">Sign Up</Text>
+          <Text className="font-medium text-foreground">Sign Up</Text>
         )}
       </Pressable>
     </Card>

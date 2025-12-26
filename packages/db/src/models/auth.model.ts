@@ -12,7 +12,7 @@ const userSchema = new Schema(
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date, required: true },
   },
-  { collection: "user" },
+  { collection: "user" }
 );
 
 const sessionSchema = new Schema(
@@ -26,7 +26,7 @@ const sessionSchema = new Schema(
     userAgent: { type: String },
     userId: { type: String, ref: "User", required: true },
   },
-  { collection: "session" },
+  { collection: "session" }
 );
 
 const accountSchema = new Schema(
@@ -45,7 +45,7 @@ const accountSchema = new Schema(
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date, required: true },
   },
-  { collection: "account" },
+  { collection: "account" }
 );
 
 const verificationSchema = new Schema(
@@ -57,7 +57,7 @@ const verificationSchema = new Schema(
     createdAt: { type: Date },
     updatedAt: { type: Date },
   },
-  { collection: "verification" },
+  { collection: "verification" }
 );
 
 const User = model("User", userSchema);
