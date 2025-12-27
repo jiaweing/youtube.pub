@@ -1,0 +1,122 @@
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  X,
+  XCircle
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
+export function BackgroundRemovalQueue() {
+  const queue = useBackgroundRemovalQueue((s) => s.queue);
+  const removeFromQueue = useBackgroundRemovalQueue((s) => s.removeFromQueue);
+  const clearCompleted = useBackgroundRemovalQueue((s) => s.clearCompleted);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Show component only when there are items in the queue
+  useEffect(() => {
+    if (queue.length > 0) {
+      setIsVisible(true);
+      // Auto-expand if new items are added
+      if (queue.some((i) => i.status === "pending")) {
+        setIsExpanded(true);
+      }
+    } else {
+      // Hide after a delay if empty
+      const timer = setTimeout(() => setIsVisible(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [queue]);
+
+  if (!isVisible && queue.length === 0) return null;
+
+  const pendingCount = queue.filter(
+    (i) => i.status === "pending" || i.status === "processing"
+  ).length;
+  const completedCount = queue.filter((i) => i.status === "done").length;
+  const errorCount = queue.filter((i) => i.status === "error").length;
+
+  return (
+    <div className="fixed right-4 bottom-20 z-50 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl transition-all">
+      <div className="flex items-center justify-between border-b bg-muted/50 p-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Background Removal</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            {pendingCount} pending
+          </span>
+        </div>
+        <div className="flex gap-1">
+          {queue.length > 0 && (completedCount > 0 || errorCount > 0) && (
+            <Button
+              onClick={clearCompleted}
+              size="icon-sm"
+              variant="ghost"
+              title="Clear finished"
+              className="h-6 w-6"
+            >
+              <X className="size-3" />
+            </Button>
+          )}
+          <Button
+            onClick={() => setIsExpanded(!isExpanded)}
+            size="icon-sm"
+            variant="ghost"
+            title={isExpanded ? "Collapse" : "Expand"}
+            className="h-6 w-6"
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                !isExpanded && "rotate-180"
+              )}
+            />
+          </Button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <ScrollArea className="max-h-60">
+          <div className="flex flex-col gap-1 p-2">
+            {queue.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted/50 transition-colors group"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  {item.status === "pending" && (
+                    <div className="flex size-4 items-center justify-center rounded-full border-2 border-muted-foreground/30" />
+                  )}
+                  {item.status === "processing" && (
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                  )}
+                  {item.status === "done" && (
+                    <CheckCircle2 className="size-4 text-green-500" />
+                  )}
+                  {item.status === "error" && (
+                    <XCircle className="size-4 text-destructive" />
+                  )}
+                  <span className="truncate text-sm">{item.name}</span>
+                </div>
+                {item.status !== "processing" && (
+                  <Button
+                    onClick={() => removeFromQueue(item.id)}
+                    size="icon-sm"
+                    variant="ghost"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}

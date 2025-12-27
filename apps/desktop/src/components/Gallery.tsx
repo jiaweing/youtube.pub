@@ -1,17 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
-import {
-  Copy,
-  Download,
-  GalleryThumbnails,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-  Wand2,
-} from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import type { ViewMode } from "@/App";
 import {
   AlertDialog,
@@ -40,6 +26,23 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
+import { useSelectionStore } from "@/stores/useSelectionStore";
+import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
+import {
+  Check,
+  Circle,
+  Copy,
+  Download,
+  GalleryThumbnails,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface GalleryProps {
   viewMode: ViewMode;
@@ -67,6 +70,13 @@ export function Gallery({
   const sortOrder = useGalleryStore((s) => s.sortOrder);
   const rawThumbnails = useGalleryStore((s) => s.thumbnails);
 
+  // Selection mode
+  const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
+  const selectedIds = useSelectionStore((s) => s.selectedIds);
+  const toggleSelection = useSelectionStore((s) => s.toggleSelection);
+  const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
+  const selectAll = useSelectionStore((s) => s.selectAll);
+
   const thumbnails = useMemo(() => {
     return [...rawThumbnails].sort((a, b) => {
       let cmp = 0;
@@ -78,6 +88,113 @@ export function Gallery({
       return sortOrder === "desc" ? -cmp : cmp;
     });
   }, [rawThumbnails, sortField, sortOrder]);
+
+  // Drag selection state
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // Handle drag selection
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Create a specialized type guard or check if the target is a thumbnail or button
+      const target = e.target as HTMLElement;
+      if (
+        target.closest("button") ||
+        target.closest(".group") // Thumbnail container class
+      ) {
+        return;
+      }
+
+      isDragging.current = true;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left + container.scrollLeft;
+      const y = e.clientY - rect.top + container.scrollTop;
+      startPoint.current = { x, y };
+
+      // Enable selection mode if not already active
+      if (!isSelectionMode) {
+        useSelectionStore.getState().toggleSelectionMode();
+      }
+
+      // Standard behavior: clear selection on background click/drag unless Shift/Ctrl held
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        useSelectionStore.getState().clearSelection();
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !startPoint.current) return;
+
+      const rect = container.getBoundingClientRect();
+      const currentX = e.clientX - rect.left + container.scrollLeft;
+      const currentY = e.clientY - rect.top + container.scrollTop;
+
+      const x = Math.min(currentX, startPoint.current.x);
+      const y = Math.min(currentY, startPoint.current.y);
+      const width = Math.abs(currentX - startPoint.current.x);
+      const height = Math.abs(currentY - startPoint.current.y);
+
+      setSelectionBox({ x, y, width, height });
+
+      // Calculate intersections
+      const boxRect = { left: x, top: y, right: x + width, bottom: y + height };
+      const newSelectedIds: string[] = [];
+
+      // Get all thumbnail elements
+      const thumbnailElements = container.querySelectorAll("[data-thumbnail-id]");
+      thumbnailElements.forEach((el) => {
+        const elRect = (el as HTMLElement).getBoundingClientRect();
+        // Convert elRect to container-relative coordinates
+        const elRelLeft = elRect.left - rect.left + container.scrollLeft;
+        const elRelTop = elRect.top - rect.top + container.scrollTop;
+        const elRelRight = elRelLeft + elRect.width;
+        const elRelBottom = elRelTop + elRect.height;
+
+        const isIntersecting =
+          boxRect.left < elRelRight &&
+          boxRect.right > elRelLeft &&
+          boxRect.top < elRelBottom &&
+          boxRect.bottom > elRelTop;
+
+        if (isIntersecting) {
+          const id = el.getAttribute("data-thumbnail-id");
+          if (id) newSelectedIds.push(id);
+        }
+      });
+
+      // Update selection store - replace current selection with what's in box
+      // (Advanced: support shift/ctrl modifiers for add/remove)
+      selectAll(newSelectedIds);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      startPoint.current = null;
+      setSelectionBox(null);
+    };
+
+    container.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      container.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isSelectionMode, selectAll, thumbnails]); // Re-bind if thumbnails change (layout might change)
+
+
 
   const gridCols = {
     "3": "grid-cols-3",
@@ -167,17 +284,35 @@ export function Gallery({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div ref={containerRef} className="relative flex-1 overflow-y-auto p-4 select-none">
+      {selectionBox && (
+        <div
+          className="absolute z-50 border border-primary/50 bg-primary/20 pointer-events-none"
+          style={{
+            left: selectionBox.x,
+            top: selectionBox.y,
+            width: selectionBox.width,
+            height: selectionBox.height,
+          }}
+        />
+      )}
       <div className={cn("grid gap-4", gridCols[viewMode])}>
         {/* Ghost add button as first item */}
         {AddImageButton}
 
         {thumbnails.map((thumbnail) => (
           <div
-            className="group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]"
+            className={cn(
+              "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
+              isSelectionMode && selectedIds.has(thumbnail.id) && "ring-2 ring-primary"
+            )}
             key={thumbnail.id}
+            data-thumbnail-id={thumbnail.id}
             onClick={() => {
-              if (processingId !== thumbnail.id) {
+              if (processingId === thumbnail.id) return;
+              if (isSelectionMode) {
+                toggleSelection(thumbnail.id);
+              } else {
                 onThumbnailClick(thumbnail);
               }
             }}
@@ -188,13 +323,27 @@ export function Gallery({
               className="h-full w-full object-cover"
               src={thumbnail.dataUrl}
             />
+            {/* Selection checkbox overlay */}
+            {isSelectionMode && (
+              <div className="absolute top-2 left-2 z-20">
+                {selectedIds.has(thumbnail.id) ? (
+                  <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                    <Check className="size-4" />
+                  </div>
+                ) : (
+                  <div className="flex size-6 items-center justify-center rounded-full border-2 border-white/80 bg-black/30 shadow-md">
+                    <Circle className="size-4 text-transparent" />
+                  </div>
+                )}
+              </div>
+            )}
             {/* Single gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
               {processingId === thumbnail.id ? (
                 <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
                   Processing...
                 </span>
-              ) : (
+              ) : !isSelectionMode ? (
                 <div
                   className="absolute right-2 bottom-2 z-10 flex gap-1"
                   onClick={(e) => e.stopPropagation()}
@@ -303,7 +452,7 @@ export function Gallery({
                     )}
                   </div>
                 </div>
-              )}
+              ) : null}
               <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
                 <Tooltip>
                   <TooltipTrigger asChild>

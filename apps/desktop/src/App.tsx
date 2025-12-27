@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { BackgroundRemovalQueue } from "@/components/BackgroundRemovalQueue";
 import { BottomToolbar } from "@/components/BottomToolbar";
 import { ExportDialog } from "@/components/ExportDialog";
 import { Gallery } from "@/components/Gallery";
@@ -7,6 +7,7 @@ import { TitleBar } from "@/components/TitleBar";
 import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
 import type { ThumbnailItem } from "@/stores/useGalleryStore";
+import { useState } from "react";
 
 export type ViewMode = "3" | "4" | "5" | "row";
 type Page = "gallery" | "editor";
@@ -68,6 +69,7 @@ export default function App() {
         />
       )}
       <Toaster />
+      <BackgroundRemovalQueue />
     </div>
   );
 }
