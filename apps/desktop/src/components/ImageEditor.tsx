@@ -3,6 +3,8 @@ import {
   ChevronDown,
   Copy,
   Download,
+  Link2,
+  Link2Off,
   Minus,
   Plus,
   Redo2,
@@ -17,6 +19,16 @@ import { LayersPanel } from "@/components/editor/LayersPanel";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { GalleryPicker } from "@/components/GalleryPicker";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ResizablePanel } from "@/components/ui/resizable-panel";
 import {
   Tooltip,
@@ -44,10 +56,14 @@ export function ImageEditor({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
+  const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
   const [canvasSize, setCanvasSize] = useState({
     width: thumbnail.canvasWidth || 1280,
     height: thumbnail.canvasHeight || 720,
   });
+  const [tempCanvasSize, setTempCanvasSize] = useState(canvasSize);
+  const [keepAspectRatio, setKeepAspectRatio] = useState(false);
+  const aspectRatio = canvasSize.width / canvasSize.height;
   const [zoom, setZoom] = useState(1);
   const [fitScale, setFitScale] = useState(1);
   const saveProject = useGalleryStore((s) => s.saveProject);
@@ -326,11 +342,146 @@ export function ImageEditor({
           </div>
           {/* Footer controls */}
           <div className="flex shrink-0 items-center justify-between border-border border-t bg-background px-3 py-2">
-            <div className="text-muted-foreground text-xs">
-              {isProcessing
-                ? "Processing..."
-                : `${canvasSize.width} × ${canvasSize.height}`}
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="cursor-pointer text-muted-foreground text-xs hover:text-foreground"
+                  onClick={() => setShowCanvasSizeDialog(true)}
+                  type="button"
+                >
+                  {isProcessing
+                    ? "Processing..."
+                    : `${canvasSize.width} × ${canvasSize.height}`}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Change Canvas Size</TooltipContent>
+            </Tooltip>
+            <Dialog
+              onOpenChange={(open) => {
+                setShowCanvasSizeDialog(open);
+                if (open) {
+                  setTempCanvasSize(canvasSize);
+                }
+              }}
+              open={showCanvasSizeDialog}
+            >
+              <DialogContent className="sm:max-w-xs">
+                <DialogHeader>
+                  <DialogTitle>Change Canvas Size</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <Label
+                        className="mb-1.5 block text-xs"
+                        htmlFor="canvas-width"
+                      >
+                        Width
+                      </Label>
+                      <Input
+                        id="canvas-width"
+                        max={7680}
+                        min={1}
+                        onChange={(e) => {
+                          const newWidth = Number(e.target.value);
+                          if (keepAspectRatio) {
+                            const newHeight = Math.round(
+                              newWidth / aspectRatio
+                            );
+                            setTempCanvasSize({
+                              width: newWidth,
+                              height: newHeight,
+                            });
+                          } else {
+                            setTempCanvasSize((prev) => ({
+                              ...prev,
+                              width: newWidth,
+                            }));
+                          }
+                        }}
+                        type="number"
+                        value={tempCanvasSize.width}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Label
+                        className="mb-1.5 block text-xs"
+                        htmlFor="canvas-height"
+                      >
+                        Height
+                      </Label>
+                      <Input
+                        id="canvas-height"
+                        max={7680}
+                        min={1}
+                        onChange={(e) => {
+                          const newHeight = Number(e.target.value);
+                          if (keepAspectRatio) {
+                            const newWidth = Math.round(
+                              newHeight * aspectRatio
+                            );
+                            setTempCanvasSize({
+                              width: newWidth,
+                              height: newHeight,
+                            });
+                          } else {
+                            setTempCanvasSize((prev) => ({
+                              ...prev,
+                              height: newHeight,
+                            }));
+                          }
+                        }}
+                        type="number"
+                        value={tempCanvasSize.height}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={keepAspectRatio}
+                      id="keep-aspect-ratio"
+                      onCheckedChange={(checked) =>
+                        setKeepAspectRatio(checked === true)
+                      }
+                    />
+                    <Label
+                      className="flex cursor-pointer items-center gap-1.5 text-xs"
+                      htmlFor="keep-aspect-ratio"
+                    >
+                      {keepAspectRatio ? (
+                        <Link2 className="size-3.5" />
+                      ) : (
+                        <Link2Off className="size-3.5 text-muted-foreground" />
+                      )}
+                      Keep aspect ratio
+                    </Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={() => setShowCanvasSizeDialog(false)}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setCanvasSize(tempCanvasSize);
+                      setStoreCanvasSize(
+                        tempCanvasSize.width,
+                        tempCanvasSize.height
+                      );
+                      setShowCanvasSizeDialog(false);
+                      toast.success(
+                        `Canvas resized to ${tempCanvasSize.width} × ${tempCanvasSize.height}`
+                      );
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             {/* Undo/Redo */}
             <div className="flex items-center gap-0.5">
               <Tooltip>
