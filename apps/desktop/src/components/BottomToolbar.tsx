@@ -1,15 +1,3 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
-import { useSelectionStore } from "@/stores/useSelectionStore";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
@@ -27,14 +15,25 @@ import {
   Trash2,
   Video,
   Wand2,
-  X
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import type { ViewMode } from "@/App";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
 import { type SortField, useGalleryStore } from "@/stores/useGalleryStore";
+import { useSelectionStore } from "@/stores/useSelectionStore";
 
 interface HeaderProps {
   viewMode: ViewMode;
@@ -251,12 +250,12 @@ export function BottomToolbar({
             <Button
               onClick={clearSelection}
               size="icon-sm"
-              variant="ghost"
               title="Clear selection"
+              variant="ghost"
             >
               <X className="size-4" />
             </Button>
-            <span className="text-sm font-medium">
+            <span className="font-medium text-sm">
               {selectedIds.size} selected
             </span>
           </div>
@@ -266,15 +265,19 @@ export function BottomToolbar({
             Duplicate
           </Button>
           <Button
+            className="text-destructive hover:text-destructive"
             onClick={() => setDeleteDialogOpen(true)}
             size="sm"
             variant="ghost"
-            className="text-destructive hover:text-destructive"
           >
             <Trash2 className="mr-2 size-4" />
             Delete
           </Button>
-          <Button onClick={handleBulkRemoveBackground} size="sm" variant="ghost">
+          <Button
+            onClick={handleBulkRemoveBackground}
+            size="sm"
+            variant="ghost"
+          >
             <Wand2 className="mr-2 size-4" />
             Remove BG
           </Button>
@@ -418,10 +421,12 @@ export function BottomToolbar({
         )}
       </div>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} items?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {selectedIds.size} items?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
               selected thumbnails.
@@ -430,8 +435,8 @@ export function BottomToolbar({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleBulkDelete}
             >
               Delete
             </AlertDialogAction>

@@ -22,8 +22,8 @@ interface BackgroundRemovalQueueState {
   clearCompleted: () => void;
 }
 
-export const useBackgroundRemovalQueue =
-  create<BackgroundRemovalQueueState>()((set, get) => ({
+export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
+  (set, get) => ({
     queue: [],
     isProcessing: false,
 
@@ -121,7 +121,8 @@ export const useBackgroundRemovalQueue =
           (item) => item.status !== "done" && item.status !== "error"
         ),
       })),
-  }));
+  })
+);
 
 // Cache for image data URLs (temporary storage during processing)
 const dataUrlCache = new Map<string, string>();

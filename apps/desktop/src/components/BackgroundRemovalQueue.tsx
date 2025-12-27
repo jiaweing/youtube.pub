@@ -1,15 +1,9 @@
+import { CheckCircle2, ChevronDown, Loader2, X, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
-import {
-  CheckCircle2,
-  ChevronDown,
-  Loader2,
-  X,
-  XCircle
-} from "lucide-react";
-import { useEffect, useState } from "react";
 
 export function BackgroundRemovalQueue() {
   const queue = useBackgroundRemovalQueue((s) => s.queue);
@@ -45,29 +39,29 @@ export function BackgroundRemovalQueue() {
     <div className="fixed right-4 bottom-20 z-50 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl transition-all">
       <div className="flex items-center justify-between border-b bg-muted/50 p-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Background Removal</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <span className="font-medium text-sm">Background Removal</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">
             {pendingCount} pending
           </span>
         </div>
         <div className="flex gap-1">
           {queue.length > 0 && (completedCount > 0 || errorCount > 0) && (
             <Button
+              className="h-6 w-6"
               onClick={clearCompleted}
               size="icon-sm"
-              variant="ghost"
               title="Clear finished"
-              className="h-6 w-6"
+              variant="ghost"
             >
               <X className="size-3" />
             </Button>
           )}
           <Button
+            className="h-6 w-6"
             onClick={() => setIsExpanded(!isExpanded)}
             size="icon-sm"
-            variant="ghost"
             title={isExpanded ? "Collapse" : "Expand"}
-            className="h-6 w-6"
+            variant="ghost"
           >
             <ChevronDown
               className={cn(
@@ -84,8 +78,8 @@ export function BackgroundRemovalQueue() {
           <div className="flex flex-col gap-1 p-2">
             {queue.map((item) => (
               <div
+                className="group flex items-center justify-between gap-2 rounded-md p-2 transition-colors hover:bg-muted/50"
                 key={item.id}
-                className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted/50 transition-colors group"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   {item.status === "pending" && (
@@ -104,10 +98,10 @@ export function BackgroundRemovalQueue() {
                 </div>
                 {item.status !== "processing" && (
                   <Button
+                    className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
                     onClick={() => removeFromQueue(item.id)}
                     size="icon-sm"
                     variant="ghost"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="size-3" />
                   </Button>

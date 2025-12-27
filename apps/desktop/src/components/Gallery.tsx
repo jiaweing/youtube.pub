@@ -1,3 +1,19 @@
+import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
+import {
+  Check,
+  Circle,
+  Copy,
+  Download,
+  GalleryThumbnails,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { ViewMode } from "@/App";
 import {
   AlertDialog,
@@ -27,22 +43,6 @@ import {
 import { cn } from "@/lib/utils";
 import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
 import { useSelectionStore } from "@/stores/useSelectionStore";
-import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
-import {
-  Check,
-  Circle,
-  Copy,
-  Download,
-  GalleryThumbnails,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-  Wand2,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 
 interface GalleryProps {
   viewMode: ViewMode;
@@ -127,13 +127,13 @@ export function Gallery({
       }
 
       // Standard behavior: clear selection on background click/drag unless Shift/Ctrl held
-      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      if (!(e.shiftKey || e.ctrlKey || e.metaKey)) {
         useSelectionStore.getState().clearSelection();
       }
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current || !startPoint.current) return;
+      if (!(isDragging.current && startPoint.current)) return;
 
       const rect = container.getBoundingClientRect();
       const currentX = e.clientX - rect.left + container.scrollLeft;
@@ -151,7 +151,9 @@ export function Gallery({
       const newSelectedIds: string[] = [];
 
       // Get all thumbnail elements
-      const thumbnailElements = container.querySelectorAll("[data-thumbnail-id]");
+      const thumbnailElements = container.querySelectorAll(
+        "[data-thumbnail-id]"
+      );
       thumbnailElements.forEach((el) => {
         const elRect = (el as HTMLElement).getBoundingClientRect();
         // Convert elRect to container-relative coordinates
@@ -193,8 +195,6 @@ export function Gallery({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isSelectionMode, selectAll, thumbnails]); // Re-bind if thumbnails change (layout might change)
-
-
 
   const gridCols = {
     "3": "grid-cols-3",
@@ -284,10 +284,13 @@ export function Gallery({
   }
 
   return (
-    <div ref={containerRef} className="relative flex-1 overflow-y-auto p-4 select-none">
+    <div
+      className="relative flex-1 select-none overflow-y-auto p-4"
+      ref={containerRef}
+    >
       {selectionBox && (
         <div
-          className="absolute z-50 border border-primary/50 bg-primary/20 pointer-events-none"
+          className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
           style={{
             left: selectionBox.x,
             top: selectionBox.y,
@@ -304,10 +307,12 @@ export function Gallery({
           <div
             className={cn(
               "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
-              isSelectionMode && selectedIds.has(thumbnail.id) && "ring-2 ring-primary"
+              isSelectionMode &&
+                selectedIds.has(thumbnail.id) &&
+                "ring-2 ring-primary"
             )}
-            key={thumbnail.id}
             data-thumbnail-id={thumbnail.id}
+            key={thumbnail.id}
             onClick={() => {
               if (processingId === thumbnail.id) return;
               if (isSelectionMode) {
@@ -343,7 +348,7 @@ export function Gallery({
                 <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
                   Processing...
                 </span>
-              ) : !isSelectionMode ? (
+              ) : isSelectionMode ? null : (
                 <div
                   className="absolute right-2 bottom-2 z-10 flex gap-1"
                   onClick={(e) => e.stopPropagation()}
@@ -452,7 +457,7 @@ export function Gallery({
                     )}
                   </div>
                 </div>
-              ) : null}
+              )}
               <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
