@@ -61,7 +61,9 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
       filters: [{ name: formatInfo.label, extensions: [format] }],
     });
 
-    if (!filePath) return;
+    if (!filePath) {
+      return;
+    }
 
     setIsExporting(true);
 

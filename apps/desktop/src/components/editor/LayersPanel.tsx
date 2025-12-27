@@ -4,18 +4,22 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Lock,
   Trash2,
+  Unlock,
 } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { type Layer, useEditorStore } from "@/stores/useEditorStore";
+import { useEditorStore } from "@/stores/useEditorStore";
 
-interface LayersPanelProps {
-  activeLayer: Layer | undefined;
-}
-
-export function LayersPanel({ activeLayer }: LayersPanelProps) {
+export function LayersPanel() {
   const {
     layers,
     activeLayerId,
@@ -45,8 +49,8 @@ export function LayersPanel({ activeLayer }: LayersPanelProps) {
   };
 
   return (
-    <div className="flex w-56 shrink-0 flex-col border-border border-l bg-muted/30">
-      <div className="flex items-center justify-between border-border border-b px-4 py-3">
+    <div className="flex w-full shrink-0 flex-col border-border border-l bg-background">
+      <div className="flex items-center justify-between border-border border-b px-3 py-2.5">
         <span className="font-semibold text-muted-foreground text-xs uppercase">
           Layers
         </span>
@@ -57,7 +61,7 @@ export function LayersPanel({ activeLayer }: LayersPanelProps) {
           return (
             <div
               className={cn(
-                "flex cursor-pointer items-center gap-2 border-border border-b px-3 py-2.5 transition-colors",
+                "flex cursor-pointer items-center gap-1 border-border border-b px-2 py-1.5 text-xs transition-colors",
                 activeLayerId === layer.id
                   ? "bg-accent/20"
                   : "hover:bg-muted/50"
@@ -72,107 +76,101 @@ export function LayersPanel({ activeLayer }: LayersPanelProps) {
               role="button"
               tabIndex={0}
             >
-              <GripVertical className="size-3.5 cursor-grab text-muted-foreground" />
-              <button
-                className="text-muted-foreground hover:text-foreground"
+              <GripVertical className="size-3 shrink-0 cursor-grab text-muted-foreground" />
+
+              {/* Visibility */}
+              <Button
+                className="size-6"
                 onClick={(e) => {
                   e.stopPropagation();
                   updateLayer(layer.id, { visible: !layer.visible });
                 }}
-                type="button"
+                size="icon-sm"
+                variant="ghost"
               >
                 {layer.visible ? (
-                  <Eye className="size-3.5" />
+                  <Eye className="size-3" />
                 ) : (
-                  <EyeOff className="size-3.5" />
+                  <EyeOff className="size-3" />
                 )}
-              </button>
-              <span className="flex-1 truncate text-sm">{layer.name}</span>
-              <div className="flex gap-0.5">
-                <button
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  disabled={realIdx === layers.length - 1}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveLayer(layer.id, "up");
-                  }}
-                  title="Move up"
-                  type="button"
-                >
-                  <ChevronUp className="size-3.5" />
-                </button>
-                <button
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  disabled={realIdx === 0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveLayer(layer.id, "down");
-                  }}
-                  title="Move down"
-                  type="button"
-                >
-                  <ChevronDown className="size-3.5" />
-                </button>
+              </Button>
+
+              {/* Lock */}
+              <Button
+                className="size-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateLayer(layer.id, { locked: !layer.locked });
+                }}
+                size="icon-sm"
+                variant="ghost"
+              >
+                {layer.locked ? (
+                  <Lock className="size-3" />
+                ) : (
+                  <Unlock className="size-3" />
+                )}
+              </Button>
+
+              {/* Name */}
+              <span className="flex-1 truncate">{layer.name}</span>
+
+              {/* Move buttons */}
+              <div className="flex shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="size-6"
+                      disabled={realIdx === layers.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveLayer(layer.id, "up");
+                      }}
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <ChevronUp className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Move up</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="size-6"
+                      disabled={realIdx === 0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveLayer(layer.id, "down");
+                      }}
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <ChevronDown className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Move down</TooltipContent>
+                </Tooltip>
               </div>
+
+              {/* Delete */}
               {layers.length > 1 && (
-                <button
-                  className="text-muted-foreground hover:text-destructive"
+                <Button
+                  className="size-6 hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     removeLayer(layer.id);
                   }}
-                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
                 >
-                  <Trash2 className="size-3.5" />
-                </button>
+                  <Trash2 className="size-3" />
+                </Button>
               )}
             </div>
           );
         })}
       </div>
-
-      {/* Text properties */}
-      {activeLayer?.type === "text" && (
-        <div className="border-border border-t p-4">
-          <label className="mb-2 block">
-            <span className="text-muted-foreground text-xs">Text</span>
-            <input
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-              onChange={(e) =>
-                updateLayer(activeLayer.id, { text: e.target.value })
-              }
-              type="text"
-              value={activeLayer.text || ""}
-            />
-          </label>
-          <div className="flex gap-2">
-            <label className="flex-1">
-              <span className="text-muted-foreground text-xs">Size</span>
-              <input
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-                onChange={(e) =>
-                  updateLayer(activeLayer.id, {
-                    fontSize: Number(e.target.value),
-                  })
-                }
-                type="number"
-                value={activeLayer.fontSize || 48}
-              />
-            </label>
-            <label className="w-12">
-              <span className="text-muted-foreground text-xs">Color</span>
-              <input
-                className="mt-1 h-9 w-full cursor-pointer rounded-md border border-border p-1"
-                onChange={(e) =>
-                  updateLayer(activeLayer.id, { color: e.target.value })
-                }
-                type="color"
-                value={activeLayer.color || "#ffffff"}
-              />
-            </label>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

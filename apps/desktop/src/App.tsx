@@ -1,15 +1,15 @@
 import { useState } from "react";
+import { BottomToolbar } from "@/components/BottomToolbar";
 import { ExportDialog } from "@/components/ExportDialog";
 import { Gallery } from "@/components/Gallery";
-import { Header } from "@/components/Header";
 import { ImageEditor } from "@/components/ImageEditor";
 import { TitleBar } from "@/components/TitleBar";
+import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
-import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
+import type { ThumbnailItem } from "@/stores/useGalleryStore";
 
 export type ViewMode = "3" | "4" | "5" | "row";
 type Page = "gallery" | "editor";
-
 export default function App() {
   const [page, setPage] = useState<Page>("gallery");
   const [viewMode, setViewMode] = useState<ViewMode>("4");
@@ -18,18 +18,14 @@ export default function App() {
     useState<ThumbnailItem | null>(null);
   const [exportingThumbnail, setExportingThumbnail] =
     useState<ThumbnailItem | null>(null);
-  const thumbnails = useGalleryStore((s) => s.thumbnails);
-
   const handleEditThumbnail = (thumbnail: ThumbnailItem) => {
     setEditingThumbnail(thumbnail);
     setPage("editor");
   };
-
   const handleCloseEditor = () => {
     setEditingThumbnail(null);
     setPage("gallery");
   };
-
   // Editor page
   if (page === "editor" && editingThumbnail) {
     return (
@@ -48,7 +44,6 @@ export default function App() {
       </div>
     );
   }
-
   // Gallery page (default)
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -56,10 +51,9 @@ export default function App() {
       <Gallery
         onExportClick={setExportingThumbnail}
         onThumbnailClick={handleEditThumbnail}
-        thumbnails={thumbnails}
         viewMode={viewMode}
       />
-      <Header
+      <BottomToolbar
         onAddVideoClick={() => setShowExtractor(true)}
         onViewModeChange={setViewMode}
         viewMode={viewMode}
@@ -73,6 +67,7 @@ export default function App() {
           thumbnail={exportingThumbnail}
         />
       )}
+      <Toaster />
     </div>
   );
 }

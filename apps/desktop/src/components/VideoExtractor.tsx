@@ -55,13 +55,17 @@ export function VideoExtractor({ onClose }: VideoExtractorProps) {
   }, []);
 
   const handleExtractFrame = useCallback(() => {
-    if (!(videoRef.current && canvasRef.current)) return;
+    if (!(videoRef.current && canvasRef.current)) {
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;

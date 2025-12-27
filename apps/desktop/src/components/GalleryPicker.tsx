@@ -1,3 +1,6 @@
+import { useGalleryStore } from "@/stores/useGalleryStore";
+import { Button } from "./ui/button";
+
 interface GalleryPickerProps {
   onSelect: (dataUrl: string, name: string) => void;
   onClose: () => void;
@@ -44,18 +47,18 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
         </div>
         <div className="grid max-h-[60vh] grid-cols-3 gap-2 overflow-y-auto p-4">
           {thumbnails.map((thumb) => (
-            <button
-              className="aspect-video overflow-hidden rounded-lg border border-border transition-all hover:border-accent hover:ring-2 hover:ring-accent/50"
+            <Button
+              className="aspect-video h-auto overflow-hidden rounded-lg p-0"
               key={thumb.id}
               onClick={() => onSelect(thumb.dataUrl, thumb.name)}
-              type="button"
+              variant="outline"
             >
               <img
                 alt={thumb.name}
                 className="h-full w-full object-cover"
                 src={thumb.dataUrl}
               />
-            </button>
+            </Button>
           ))}
         </div>
         <div className="flex justify-end border-border border-t px-5 py-4">

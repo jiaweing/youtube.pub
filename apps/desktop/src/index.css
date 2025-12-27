@@ -22,7 +22,8 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --spacing: 0.23rem;
+  --radius: 0.8rem;
 }
 
 .dark {
@@ -80,6 +81,17 @@
   body {
     @apply font-sans bg-background text-foreground antialiased;
     overflow: hidden;
+    /* Disable browser behaviors for native desktop feel */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+  }
+  /* Allow text selection in inputs and textareas */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
   }
   html,
   body,
