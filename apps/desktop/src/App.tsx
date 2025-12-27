@@ -8,8 +8,10 @@ import { VideoExtractor } from "@/components/VideoExtractor";
 import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
 
 export type ViewMode = "3" | "4" | "5" | "row";
+type Page = "gallery" | "editor";
 
 export default function App() {
+  const [page, setPage] = useState<Page>("gallery");
   const [viewMode, setViewMode] = useState<ViewMode>("4");
   const [showExtractor, setShowExtractor] = useState(false);
   const [editingThumbnail, setEditingThumbnail] =
@@ -18,12 +20,42 @@ export default function App() {
     useState<ThumbnailItem | null>(null);
   const thumbnails = useGalleryStore((s) => s.thumbnails);
 
+  const handleEditThumbnail = (thumbnail: ThumbnailItem) => {
+    setEditingThumbnail(thumbnail);
+    setPage("editor");
+  };
+
+  const handleCloseEditor = () => {
+    setEditingThumbnail(null);
+    setPage("gallery");
+  };
+
+  // Editor page
+  if (page === "editor" && editingThumbnail) {
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        <ImageEditor
+          onClose={handleCloseEditor}
+          onExport={() => setExportingThumbnail(editingThumbnail)}
+          thumbnail={editingThumbnail}
+        />
+        {exportingThumbnail && (
+          <ExportDialog
+            onClose={() => setExportingThumbnail(null)}
+            thumbnail={exportingThumbnail}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Gallery page (default)
   return (
     <div className="flex h-screen flex-col bg-background">
       <TitleBar />
       <Gallery
         onExportClick={setExportingThumbnail}
-        onThumbnailClick={setEditingThumbnail}
+        onThumbnailClick={handleEditThumbnail}
         thumbnails={thumbnails}
         viewMode={viewMode}
       />
@@ -34,15 +66,6 @@ export default function App() {
       />
       {showExtractor && (
         <VideoExtractor onClose={() => setShowExtractor(false)} />
-      )}
-      {editingThumbnail && (
-        <ImageEditor
-          onClose={() => setEditingThumbnail(null)}
-          onExport={() => {
-            setExportingThumbnail(editingThumbnail);
-          }}
-          thumbnail={editingThumbnail}
-        />
       )}
       {exportingThumbnail && (
         <ExportDialog

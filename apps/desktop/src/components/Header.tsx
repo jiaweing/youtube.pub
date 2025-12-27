@@ -72,7 +72,7 @@ export function Header({
   }, [onAddVideoClick]);
 
   return (
-    <header className="flex items-center justify-between border-border border-t px-4 py-2">
+    <header className="flex items-center justify-between px-4 py-2">
       <div className="flex gap-1">
         {(["3", "4", "5", "row"] as ViewMode[]).map((mode) => (
           <Button

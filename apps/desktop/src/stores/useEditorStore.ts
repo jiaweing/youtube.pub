@@ -31,6 +31,7 @@ interface EditorState {
   setActiveLayer: (id: string | null) => void;
   setActiveTool: (tool: "select" | "text") => void;
   moveLayer: (id: string, direction: "up" | "down") => void;
+  reorderLayers: (fromIndex: number, toIndex: number) => void;
   reset: () => void;
 }
 
@@ -107,6 +108,15 @@ export const useEditorStore = create<EditorState>((set) => ({
         newLayers[newIndex],
         newLayers[index],
       ];
+      return { layers: newLayers };
+    });
+  },
+
+  reorderLayers: (fromIndex, toIndex) => {
+    set((state) => {
+      const newLayers = [...state.layers];
+      const [removed] = newLayers.splice(fromIndex, 1);
+      newLayers.splice(toIndex, 0, removed);
       return { layers: newLayers };
     });
   },
