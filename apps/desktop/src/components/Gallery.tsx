@@ -16,7 +16,7 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ViewMode } from "@/App";
 import {
@@ -119,38 +119,40 @@ export function Gallery({
   } | null>(null);
 
   // Handle drag selection
-  useEffect(() => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const container = containerRef.current;
     if (!container) {
       return;
     }
 
-    const handleMouseDown = (e: MouseEvent) => {
-      // Create a specialized type guard or check if the target is a thumbnail or button
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("button") ||
-        target.closest(".group") // Thumbnail container class
-      ) {
-        return;
-      }
+    // Create a specialized type guard or check if the target is a thumbnail or button
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest(".group") // Thumbnail container class
+    ) {
+      return;
+    }
 
-      isDragging.current = true;
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left + container.scrollLeft;
-      const y = e.clientY - rect.top + container.scrollTop;
-      startPoint.current = { x, y };
+    if (e.button !== 0) {
+      return;
+    }
 
-      // Enable selection mode if not already active
-      if (!isSelectionMode) {
-        useSelectionStore.getState().toggleSelectionMode();
-      }
+    isDragging.current = true;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    const y = e.clientY - rect.top + container.scrollTop;
+    startPoint.current = { x, y };
 
-      // Standard behavior: clear selection on background click/drag unless Shift/Ctrl held
-      if (!(e.shiftKey || e.ctrlKey || e.metaKey)) {
-        useSelectionStore.getState().clearSelection();
-      }
-    };
+    // Enable selection mode if not already active
+    if (!useSelectionStore.getState().isSelectionMode) {
+      useSelectionStore.getState().toggleSelectionMode();
+    }
+
+    // Standard behavior: clear selection on background click/drag unless Shift/Ctrl held
+    if (!(e.shiftKey || e.ctrlKey || e.metaKey)) {
+      useSelectionStore.getState().clearSelection();
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!(isDragging.current && startPoint.current)) {
@@ -200,25 +202,20 @@ export function Gallery({
 
       // Update selection store - replace current selection with what's in box
       // (Advanced: support shift/ctrl modifiers for add/remove)
-      selectAll(newSelectedIds);
+      useSelectionStore.getState().selectAll(newSelectedIds);
     };
 
     const handleMouseUp = () => {
       isDragging.current = false;
       startPoint.current = null;
       setSelectionBox(null);
-    };
-
-    container.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      container.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isSelectionMode, selectAll]); // Re-bind if thumbnails change (layout might change)
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }, []);
 
   const gridCols = {
     "3": "grid-cols-3",
@@ -313,6 +310,7 @@ export function Gallery({
         <ContextMenuTrigger asChild>
           <div
             className="flex-1 overflow-y-auto p-4 outline-none"
+            onMouseDown={handleMouseDown}
             ref={containerRef}
           >
             {selectionBox && (
