@@ -24,7 +24,7 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
         >
           <Image className="mx-auto size-12 text-muted-foreground opacity-50" />
           <p className="mt-4 text-muted-foreground">No images in gallery</p>
-          <Button className="mt-4" onClick={onClose} variant="outline">
+          <Button className="mt-4" onClick={onClose} variant="ghost">
             Close
           </Button>
         </div>
@@ -52,7 +52,7 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
               className="aspect-video h-auto overflow-hidden rounded-lg p-0"
               key={thumb.id}
               onClick={() => onSelect(thumb.dataUrl, thumb.name)}
-              variant="outline"
+              variant="ghost"
             >
               <img
                 alt={thumb.name}
@@ -63,7 +63,7 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
           ))}
         </div>
         <div className="flex justify-end border-border border-t px-5 py-4">
-          <Button onClick={onClose} variant="outline">
+          <Button onClick={onClose} variant="ghost">
             Cancel
           </Button>
         </div>

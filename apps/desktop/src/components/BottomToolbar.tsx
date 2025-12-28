@@ -10,6 +10,7 @@ import {
   Grid2X2,
   Grid3X3,
   Image,
+  Key,
   List,
   Plus,
   Trash2,
@@ -20,6 +21,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ViewMode } from "@/App";
+import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +82,7 @@ export function BottomToolbar({
 }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const addThumbnail = useGalleryStore((s) => s.addThumbnail);
   const sortField = useGalleryStore((s) => s.sortField);
   const sortOrder = useGalleryStore((s) => s.sortOrder);
@@ -378,6 +381,19 @@ export function BottomToolbar({
           {isSelectionMode ? "Cancel" : "Select"}
         </Button>
 
+        {/* API Key Button */}
+        {(!isSelectionMode || selectedIds.size === 0) && (
+          <Button
+            aria-label="Gemini API Key"
+            onClick={() => setShowApiKeyDialog(true)}
+            size="icon-sm"
+            title="Gemini API Key"
+            variant="ghost"
+          >
+            <Key className="size-4" />
+          </Button>
+        )}
+
         {/* Add button - hide in selection mode if items selected to reduce clutter? Or keep? Keeping it for now but maybe disable if confusing. */}
         {(!isSelectionMode || selectedIds.size === 0) && (
           <div className="relative">
@@ -443,6 +459,11 @@ export function BottomToolbar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ApiKeyDialog
+        onOpenChange={setShowApiKeyDialog}
+        open={showApiKeyDialog}
+      />
     </header>
   );
 }

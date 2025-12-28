@@ -8,9 +8,10 @@ import {
   Trash2,
   Unlock,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +32,9 @@ export function LayersPanel() {
   } = useEditorStore();
 
   const [dragLayerIdx, setDragLayerIdx] = useState<number | null>(null);
+  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleLayerDragStart = (idx: number) => {
     setDragLayerIdx(idx);
@@ -48,6 +52,25 @@ export function LayersPanel() {
     setDragLayerIdx(null);
   };
 
+  const startEditing = useCallback((layerId: string, currentName: string) => {
+    setEditingLayerId(layerId);
+    setEditingName(currentName);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }, []);
+
+  const finishEditing = useCallback(() => {
+    if (editingLayerId && editingName.trim()) {
+      updateLayer(editingLayerId, { name: editingName.trim() });
+    }
+    setEditingLayerId(null);
+    setEditingName("");
+  }, [editingLayerId, editingName, updateLayer]);
+
+  const cancelEditing = useCallback(() => {
+    setEditingLayerId(null);
+    setEditingName("");
+  }, []);
+
   return (
     <div className="flex w-full shrink-0 flex-col border-border border-l bg-background">
       <div className="flex items-center justify-between border-border border-b px-3 py-2.5">
@@ -58,6 +81,8 @@ export function LayersPanel() {
       <div className="flex-1 overflow-y-auto">
         {[...layers].reverse().map((layer, displayIdx) => {
           const realIdx = layers.length - 1 - displayIdx;
+          const isEditing = editingLayerId === layer.id;
+
           return (
             <div
               className={cn(
@@ -66,7 +91,7 @@ export function LayersPanel() {
                   ? "bg-accent/20"
                   : "hover:bg-muted/50"
               )}
-              draggable
+              draggable={!isEditing}
               key={layer.id}
               onClick={() => setActiveLayer(layer.id)}
               onDragEnd={handleLayerDragEnd}
@@ -112,8 +137,33 @@ export function LayersPanel() {
                 )}
               </Button>
 
-              {/* Name */}
-              <span className="flex-1 truncate">{layer.name}</span>
+              {/* Name - Editable */}
+              {isEditing ? (
+                <Input
+                  autoFocus
+                  className="h-5 flex-1 px-1 text-xs"
+                  onBlur={finishEditing}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") finishEditing();
+                    if (e.key === "Escape") cancelEditing();
+                  }}
+                  ref={inputRef}
+                  value={editingName}
+                />
+              ) : (
+                <span
+                  className="flex-1 cursor-text truncate hover:underline"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    startEditing(layer.id, layer.name);
+                  }}
+                >
+                  {layer.name}
+                </span>
+              )}
 
               {/* Move buttons */}
               <div className="flex shrink-0">

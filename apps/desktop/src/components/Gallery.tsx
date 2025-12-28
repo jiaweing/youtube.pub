@@ -425,7 +425,7 @@ export function Gallery({
                             onClick={async (e) => {
                               e.stopPropagation();
                               await duplicateThumbnail(thumbnail.id);
-                              toast("Thumbnail duplicated");
+                              toast.success("Thumbnail duplicated");
                               setMenuOpenId(null);
                             }}
                             size="sm"
@@ -510,7 +510,7 @@ export function Gallery({
             onKeyDown={(e) => {
               if (e.key === "Enter" && selectedThumbnail && newName.trim()) {
                 updateThumbnailName(selectedThumbnail.id, newName.trim());
-                toast("Thumbnail renamed");
+                toast.success("Thumbnail renamed");
                 setRenameDialogOpen(false);
               }
             }}
@@ -518,14 +518,14 @@ export function Gallery({
             value={newName}
           />
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
+            <DialogClose render={<Button variant="ghost" />}>
               Cancel
             </DialogClose>
             <Button
               onClick={() => {
                 if (selectedThumbnail && newName.trim()) {
                   updateThumbnailName(selectedThumbnail.id, newName.trim());
-                  toast("Thumbnail renamed");
+                  toast.success("Thumbnail renamed");
                   setRenameDialogOpen(false);
                 }
               }}
@@ -552,7 +552,7 @@ export function Gallery({
               onClick={async () => {
                 if (selectedThumbnail) {
                   await deleteThumbnail(selectedThumbnail.id);
-                  toast("Thumbnail deleted");
+                  toast.info("Thumbnail deleted");
                   setDeleteDialogOpen(false);
                 }
               }}

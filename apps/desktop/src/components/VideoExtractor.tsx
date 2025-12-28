@@ -139,7 +139,7 @@ export function VideoExtractor({ onClose }: VideoExtractorProps) {
         </div>
 
         <div className="flex justify-end gap-3 border-border border-t px-5 py-4">
-          <Button onClick={onClose} variant="outline">
+          <Button onClick={onClose} variant="ghost">
             Cancel
           </Button>
           <Button disabled={!videoSrc} onClick={handleExtractFrame}>

@@ -7,9 +7,7 @@ import {
   Link2Off,
   Minus,
   Plus,
-  Redo2,
   Save,
-  Undo2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +16,17 @@ import { KonvaCanvas } from "@/components/editor/KonvaCanvas";
 import { LayersPanel } from "@/components/editor/LayersPanel";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { GalleryPicker } from "@/components/GalleryPicker";
+import { GeminiImageDialog } from "@/components/GeminiImageDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { VerticalResizablePanel } from "@/components/ui/vertical-resizable-panel";
+import type { ImageLayer } from "@/stores/use-editor-store";
 import { useEditorStore } from "@/stores/use-editor-store";
 import {
   type ThumbnailItem,
@@ -60,6 +70,9 @@ export function ImageEditor({
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
+  const [showGeminiDialog, setShowGeminiDialog] = useState(false);
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
+  const [savedHistoryIndex, setSavedHistoryIndex] = useState(-1);
   const [canvasSize, setCanvasSize] = useState({
     width: thumbnail.canvasWidth || 1280,
     height: thumbnail.canvasHeight || 720,
@@ -71,6 +84,7 @@ export function ImageEditor({
   const [fitScale, setFitScale] = useState(1);
   const saveProject = useGalleryStore((s) => s.saveProject);
   const updateThumbnailName = useGalleryStore((s) => s.updateThumbnailName);
+  const addThumbnail = useGalleryStore((s) => s.addThumbnail);
   const [projectName, setProjectName] = useState(thumbnail.name);
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -84,7 +98,11 @@ export function ImageEditor({
     redo,
     canUndo,
     canRedo,
+    historyIndex,
   } = useEditorStore();
+
+  // Track unsaved changes
+  const hasUnsavedChanges = historyIndex !== savedHistoryIndex;
   // Initialize - load from layerData if exists, otherwise from image
   useEffect(() => {
     if (initializedRef.current) {
@@ -92,6 +110,7 @@ export function ImageEditor({
     }
     initializedRef.current = true;
     reset();
+    setSavedHistoryIndex(-1); // Reset saved state for new file
     if (thumbnail.layerData) {
       // Load existing project
       try {
@@ -220,10 +239,11 @@ export function ImageEditor({
         canvasSize.width,
         canvasSize.height
       );
-      toast("Project saved");
+      toast.success("Project saved");
+      setSavedHistoryIndex(useEditorStore.getState().historyIndex);
     } catch (error) {
       console.error("Save failed:", error);
-      toast("Failed to save");
+      toast.error("Failed to save");
     }
   }, [saveProject, projectId, projectName, layers, canvasSize]);
   const handleSaveAsNew = useCallback(async () => {
@@ -242,7 +262,7 @@ export function ImageEditor({
     );
     setProjectId(newId);
     setProjectName(`${projectName} (Copy)`);
-    toast("Saved as new project");
+    toast.success("Saved as new project");
   }, [saveProject, projectName, layers, canvasSize]);
   // Keyboard shortcuts
   useEffect(() => {
@@ -277,7 +297,13 @@ export function ImageEditor({
               size: "icon-sm",
               variant: "ghost",
             })} relative z-101`}
-            onClick={onClose}
+            onClick={() => {
+              if (hasUnsavedChanges) {
+                setShowConfirmClose(true);
+              } else {
+                onClose();
+              }
+            }}
           >
             <ArrowLeft className="size-4" />
           </TooltipTrigger>
@@ -322,7 +348,16 @@ export function ImageEditor({
         <EditorToolbar
           isProcessing={isProcessing}
           onAddImage={() => setShowGalleryPicker(true)}
+          onAiGenerate={() => setShowGeminiDialog(true)}
           onRemoveBackground={handleRemoveBackground}
+          onSaveLayerAsImage={() => {
+            const activeLayer = layers.find((l) => l.id === activeLayerId);
+            if (activeLayer?.type === "image") {
+              const imgLayer = activeLayer as ImageLayer;
+              addThumbnail(imgLayer.dataUrl, `${imgLayer.name} (Saved)`);
+              toast.success("Layer saved as new thumbnail");
+            }
+          }}
         />
         {/* Canvas container */}
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -462,7 +497,7 @@ export function ImageEditor({
                 <DialogFooter>
                   <Button
                     onClick={() => setShowCanvasSizeDialog(false)}
-                    variant="outline"
+                    variant="ghost"
                   >
                     Cancel
                   </Button>
@@ -484,35 +519,6 @@ export function ImageEditor({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            {/* Undo/Redo */}
-            <div className="flex items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger
-                  className={buttonVariants({
-                    size: "icon-sm",
-                    variant: "ghost",
-                  })}
-                  disabled={!canUndo()}
-                  onClick={undo}
-                >
-                  <Undo2 className="size-3" />
-                </TooltipTrigger>
-                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  className={buttonVariants({
-                    size: "icon-sm",
-                    variant: "ghost",
-                  })}
-                  disabled={!canRedo()}
-                  onClick={redo}
-                >
-                  <Redo2 className="size-3" />
-                </TooltipTrigger>
-                <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
-              </Tooltip>
-            </div>
             {/* Zoom controls */}
             <div className="flex items-center gap-0.5 rounded-md px-0.5">
               <Button onClick={handleZoomOut} size="icon-sm" variant="ghost">
@@ -544,6 +550,9 @@ export function ImageEditor({
                 >
                   <Save className="size-4" />
                   Save
+                  {hasUnsavedChanges && (
+                    <span className="ml-1 size-2 animate-pulse rounded-full bg-orange-500" />
+                  )}
                   <ChevronDown className="size-3" />
                 </Button>
                 {showSaveMenu && (
@@ -601,6 +610,48 @@ export function ImageEditor({
           onSelect={handleAddFromGallery}
         />
       )}
+      {showGeminiDialog &&
+        (() => {
+          const activeLayer = layers.find((l) => l.id === activeLayerId);
+          if (activeLayer?.type !== "image") return null;
+          return (
+            <GeminiImageDialog
+              inputImageDataUrl={(activeLayer as ImageLayer).dataUrl}
+              onOpenChange={setShowGeminiDialog}
+              onSaveAsLayer={(dataUrl) => {
+                const img = new window.Image();
+                img.onload = () =>
+                  addImageLayer(dataUrl, img.width, img.height);
+                img.src = dataUrl;
+              }}
+              open={showGeminiDialog}
+            />
+          );
+        })()}
+
+      {/* Confirm close dialog */}
+      <AlertDialog onOpenChange={setShowConfirmClose} open={showConfirmClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your
+              changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmClose(false);
+                onClose();
+              }}
+            >
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

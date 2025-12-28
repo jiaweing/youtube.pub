@@ -42,6 +42,7 @@ export default function App() {
             thumbnail={exportingThumbnail}
           />
         )}
+        <Toaster />
       </div>
     );
   }

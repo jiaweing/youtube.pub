@@ -90,7 +90,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const newLayer: ImageLayer = {
       id: crypto.randomUUID(),
       type: "image",
-      name: `Image ${Date.now()}`,
+      name: "Image",
       visible: true,
       locked: false,
       x: 0,
