@@ -2,7 +2,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Copy,
-  Download,
   Link2,
   Link2Off,
   Minus,
@@ -545,20 +544,21 @@ export function ImageEditor({
             {/* Save/Export */}
             <div className="flex gap-2">
               <Button onClick={onExport} size="sm" variant="ghost">
-                <Download className="mr-1 size-4" />
                 Export
               </Button>
               <div className="relative">
                 <Button
-                  className="gap-1"
+                  className="gap-2"
                   onClick={() => setShowSaveMenu(!showSaveMenu)}
                   size="sm"
                 >
-                  <Save className="size-4" />
-                  Save
                   {hasUnsavedChanges && (
-                    <span className="ml-1 size-2 animate-pulse rounded-full bg-orange-500" />
+                    <span className="relative flex size-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                      <span className="relative inline-flex size-3 rounded-full bg-orange-500" />
+                    </span>
                   )}
+                  Save
                   <ChevronDown className="size-3" />
                 </Button>
                 {showSaveMenu && (

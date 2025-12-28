@@ -2,10 +2,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
   Check,
+  CheckSquare,
   Circle,
   Copy,
   Download,
   GalleryThumbnails,
+  Grid2X2,
+  ImagePlus,
+  MonitorPlay,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -27,6 +31,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -40,6 +51,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VideoExtractor } from "@/components/VideoExtractor";
 import { cn } from "@/lib/utils";
 import {
   type ThumbnailItem,
@@ -62,6 +74,7 @@ export function Gallery({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [showVideoExtractor, setShowVideoExtractor] = useState(false);
   const [selectedThumbnail, setSelectedThumbnail] =
     useState<ThumbnailItem | null>(null);
   const [newName, setNewName] = useState("");
@@ -79,6 +92,8 @@ export function Gallery({
   const toggleSelection = useSelectionStore((s) => s.toggleSelection);
 
   const selectAll = useSelectionStore((s) => s.selectAll);
+  const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
+  const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
 
   const thumbnails = useMemo(() => {
     return [...rawThumbnails].sort((a, b) => {
@@ -293,211 +308,309 @@ export function Gallery({
   }
 
   return (
-    <div
-      className="relative flex-1 select-none overflow-y-auto p-4"
-      ref={containerRef}
-    >
-      {selectionBox && (
-        <div
-          className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
-          style={{
-            left: selectionBox.x,
-            top: selectionBox.y,
-            width: selectionBox.width,
-            height: selectionBox.height,
-          }}
-        />
-      )}
-      <div className={cn("grid gap-4", gridCols[viewMode])}>
-        {/* Ghost add button as first item */}
-        {AddImageButton}
-
-        {thumbnails.map((thumbnail) => (
+    <div className="relative flex h-full flex-1 select-none flex-col">
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
           <div
-            className={cn(
-              "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
-              isSelectionMode &&
-                selectedIds.has(thumbnail.id) &&
-                "ring-2 ring-primary"
-            )}
-            data-thumbnail-id={thumbnail.id}
-            key={thumbnail.id}
-            onClick={() => {
-              if (processingId === thumbnail.id) {
-                return;
-              }
-              if (isSelectionMode) {
-                toggleSelection(thumbnail.id);
-              } else {
-                onThumbnailClick(thumbnail);
-              }
-            }}
-            onKeyDown={() => {}}
+            className="flex-1 overflow-y-auto p-4 outline-none"
+            ref={containerRef}
           >
-            <img
-              alt={thumbnail.name}
-              className="h-full w-full object-cover"
-              src={thumbnail.dataUrl}
-            />
-            {/* Selection checkbox overlay */}
-            {isSelectionMode && (
-              <div className="absolute top-2 left-2 z-20">
-                {selectedIds.has(thumbnail.id) ? (
-                  <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
-                    <Check className="size-4" />
-                  </div>
-                ) : (
-                  <div className="flex size-6 items-center justify-center rounded-full border-2 border-white/80 bg-black/30 shadow-md">
-                    <Circle className="size-4 text-transparent" />
-                  </div>
-                )}
-              </div>
+            {selectionBox && (
+              <div
+                className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
+                style={{
+                  left: selectionBox.x,
+                  top: selectionBox.y,
+                  width: selectionBox.width,
+                  height: selectionBox.height,
+                }}
+              />
             )}
-            {/* Single gradient overlay */}
-            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
-              {processingId === thumbnail.id ? (
-                <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
-                  Processing...
-                </span>
-              ) : isSelectionMode ? null : (
-                <div
-                  className="absolute right-2 bottom-2 z-10 flex gap-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Tooltip>
-                    <TooltipTrigger
-                      className={buttonVariants({
-                        size: "icon-sm",
-                        variant: "ghost",
-                      })}
-                      onClick={(e) => handleRemoveBackground(e, thumbnail)}
+            <div className={cn("grid gap-4", gridCols[viewMode])}>
+              {/* Ghost add button as first item */}
+              {AddImageButton}
+
+              {thumbnails.map((thumbnail) => (
+                <ContextMenu key={thumbnail.id}>
+                  <ContextMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
+                        isSelectionMode &&
+                          selectedIds.has(thumbnail.id) &&
+                          "ring-2 ring-primary"
+                      )}
+                      data-thumbnail-id={thumbnail.id}
+                      onClick={() => {
+                        if (processingId === thumbnail.id) {
+                          return;
+                        }
+                        if (isSelectionMode) {
+                          toggleSelection(thumbnail.id);
+                        } else {
+                          onThumbnailClick(thumbnail);
+                        }
+                      }}
+                      onKeyDown={() => {}}
                     >
-                      <Wand2 className="size-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>Remove Background</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger
-                      className={buttonVariants({
-                        size: "icon-sm",
-                        variant: "ghost",
-                      })}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExportClick(thumbnail);
+                      <img
+                        alt={thumbnail.name}
+                        className="h-full w-full object-cover"
+                        src={thumbnail.dataUrl}
+                      />
+                      {/* Selection checkbox overlay */}
+                      {isSelectionMode && (
+                        <div className="absolute top-2 left-2 z-20">
+                          {selectedIds.has(thumbnail.id) ? (
+                            <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                              <Check className="size-4" />
+                            </div>
+                          ) : (
+                            <div className="flex size-6 items-center justify-center rounded-full border-2 border-white/80 bg-black/30 shadow-md">
+                              <Circle className="size-4 text-transparent" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Single gradient overlay */}
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+                        {processingId === thumbnail.id ? (
+                          <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
+                            Processing...
+                          </span>
+                        ) : isSelectionMode ? null : (
+                          <div
+                            className="absolute right-2 bottom-2 z-10 flex gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger
+                                className={buttonVariants({
+                                  size: "icon-sm",
+                                  variant: "ghost",
+                                })}
+                                onClick={(e) =>
+                                  handleRemoveBackground(e, thumbnail)
+                                }
+                              >
+                                <Wand2 className="size-4" />
+                              </TooltipTrigger>
+                              <TooltipContent>Remove Background</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                className={buttonVariants({
+                                  size: "icon-sm",
+                                  variant: "ghost",
+                                })}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onExportClick(thumbnail);
+                                }}
+                              >
+                                <Download className="size-4" />
+                              </TooltipTrigger>
+                              <TooltipContent>Export</TooltipContent>
+                            </Tooltip>
+                            <div className="relative">
+                              <Tooltip>
+                                <TooltipTrigger
+                                  className={buttonVariants({
+                                    size: "icon-sm",
+                                    variant: "ghost",
+                                  })}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpenId(
+                                      menuOpenId === thumbnail.id
+                                        ? null
+                                        : thumbnail.id
+                                    );
+                                  }}
+                                >
+                                  <MoreHorizontal className="size-4" />
+                                </TooltipTrigger>
+                                <TooltipContent>More</TooltipContent>
+                              </Tooltip>
+                              {menuOpenId === thumbnail.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMenuOpenId(null);
+                                    }}
+                                    onKeyDown={() => {}}
+                                  />
+                                  <div className="absolute right-0 bottom-full z-50 mb-2 w-36 rounded-lg border border-border bg-card p-1 shadow-lg">
+                                    <Button
+                                      className="w-full justify-start"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await duplicateThumbnail(thumbnail.id);
+                                        toast.success("Thumbnail duplicated");
+                                        setMenuOpenId(null);
+                                      }}
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Copy className="mr-2 size-4" />
+                                      Duplicate
+                                    </Button>
+                                    <Button
+                                      className="w-full justify-start"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedThumbnail(thumbnail);
+                                        setNewName(thumbnail.name);
+                                        setRenameDialogOpen(true);
+                                        setMenuOpenId(null);
+                                      }}
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Pencil className="mr-2 size-4" />
+                                      Rename
+                                    </Button>
+                                    <Button
+                                      className="w-full justify-start text-destructive hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedThumbnail(thumbnail);
+                                        setDeleteDialogOpen(true);
+                                        setMenuOpenId(null);
+                                      }}
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Trash2 className="mr-2 size-4" />
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
+                          <Tooltip>
+                            <TooltipTrigger className="block truncate text-sm text-white">
+                              {thumbnail.name}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="space-y-0.5">
+                                <p className="font-medium">{thumbnail.name}</p>
+                                {thumbnail.canvasWidth &&
+                                  thumbnail.canvasHeight && (
+                                    <p className="text-muted-foreground text-xs">
+                                      {thumbnail.canvasWidth} ×{" "}
+                                      {thumbnail.canvasHeight}
+                                    </p>
+                                  )}
+                                <p className="text-muted-foreground text-xs">
+                                  Updated:{" "}
+                                  {new Date(
+                                    thumbnail.updatedAt
+                                  ).toLocaleString()}
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  Created:{" "}
+                                  {new Date(
+                                    thumbnail.createdAt
+                                  ).toLocaleString()}
+                                </p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      onClick={async () => {
+                        await duplicateThumbnail(thumbnail.id);
+                        toast.success("Thumbnail duplicated");
                       }}
                     >
-                      <Download className="size-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>Export</TooltipContent>
-                  </Tooltip>
-                  <div className="relative">
-                    <Tooltip>
-                      <TooltipTrigger
-                        className={buttonVariants({
-                          size: "icon-sm",
-                          variant: "ghost",
-                        })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId(
-                            menuOpenId === thumbnail.id ? null : thumbnail.id
-                          );
-                        }}
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>More</TooltipContent>
-                    </Tooltip>
-                    {menuOpenId === thumbnail.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(null);
-                          }}
-                          onKeyDown={() => {}}
-                        />
-                        <div className="absolute right-0 bottom-full z-50 mb-2 w-36 rounded-lg border border-border bg-card p-1 shadow-lg">
-                          <Button
-                            className="w-full justify-start"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await duplicateThumbnail(thumbnail.id);
-                              toast.success("Thumbnail duplicated");
-                              setMenuOpenId(null);
-                            }}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Copy className="mr-2 size-4" />
-                            Duplicate
-                          </Button>
-                          <Button
-                            className="w-full justify-start"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedThumbnail(thumbnail);
-                              setNewName(thumbnail.name);
-                              setRenameDialogOpen(true);
-                              setMenuOpenId(null);
-                            }}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Pencil className="mr-2 size-4" />
-                            Rename
-                          </Button>
-                          <Button
-                            className="w-full justify-start text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedThumbnail(thumbnail);
-                              setDeleteDialogOpen(true);
-                              setMenuOpenId(null);
-                            }}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Trash2 className="mr-2 size-4" />
-                            Delete
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
-                <Tooltip>
-                  <TooltipTrigger className="block truncate text-sm text-white">
-                    {thumbnail.name}
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-0.5">
-                      <p className="font-medium">{thumbnail.name}</p>
-                      {thumbnail.canvasWidth && thumbnail.canvasHeight && (
-                        <p className="text-muted-foreground text-xs">
-                          {thumbnail.canvasWidth} × {thumbnail.canvasHeight}
-                        </p>
-                      )}
-                      <p className="text-muted-foreground text-xs">
-                        Updated:{" "}
-                        {new Date(thumbnail.updatedAt).toLocaleString()}
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        Created:{" "}
-                        {new Date(thumbnail.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+                      <Copy className="mr-2 size-4" />
+                      Duplicate
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={() => {
+                        setSelectedThumbnail(thumbnail);
+                        setNewName(thumbnail.name);
+                        setRenameDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="mr-2 size-4" />
+                      Rename
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => onExportClick(thumbnail)}>
+                      <Download className="mr-2 size-4" />
+                      Export
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={(e) => handleRemoveBackground(e, thumbnail)}
+                    >
+                      <Wand2 className="mr-2 size-4" />
+                      Remove Background
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => {
+                        setSelectedThumbnail(thumbnail);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleAddImage}>
+            <ImagePlus className="mr-2 size-4" />
+            Upload Photo
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => setShowVideoExtractor(true)}>
+            <MonitorPlay className="mr-2 size-4" />
+            Upload Video
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={() => {
+              toggleSelectionMode();
+              selectAll(thumbnails.map((t) => t.id));
+            }}
+          >
+            <CheckSquare className="mr-2 size-4" />
+            Select All
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => {
+              if (isSelectionMode) {
+                exitSelectionMode();
+              } else {
+                toggleSelectionMode();
+              }
+            }}
+          >
+            <Grid2X2 className="mr-2 size-4" />
+            {isSelectionMode ? "Exit Selection Mode" : "Enter Selection Mode"}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      {showVideoExtractor && (
+        <VideoExtractor onClose={() => setShowVideoExtractor(false)} />
+      )}
 
       {/* Rename Dialog */}
       <Dialog onOpenChange={setRenameDialogOpen} open={renameDialogOpen}>
