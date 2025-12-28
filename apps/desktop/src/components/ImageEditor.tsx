@@ -16,7 +16,6 @@ import { KonvaCanvas } from "@/components/editor/KonvaCanvas";
 import { LayersPanel } from "@/components/editor/LayersPanel";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { GalleryPicker } from "@/components/GalleryPicker";
-import { GeminiImageDialog } from "@/components/GeminiImageDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,11 +55,13 @@ interface ImageEditorProps {
   thumbnail: ThumbnailItem;
   onClose: () => void;
   onExport: () => void;
+  onAiGenerate: (imageDataUrl: string) => void;
 }
 export function ImageEditor({
   thumbnail,
   onClose,
   onExport,
+  onAiGenerate,
 }: ImageEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<(() => string) | null>(null);
@@ -70,7 +71,6 @@ export function ImageEditor({
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
-  const [showGeminiDialog, setShowGeminiDialog] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [savedHistoryIndex, setSavedHistoryIndex] = useState(-1);
   const [canvasSize, setCanvasSize] = useState({
@@ -348,7 +348,13 @@ export function ImageEditor({
         <EditorToolbar
           isProcessing={isProcessing}
           onAddImage={() => setShowGalleryPicker(true)}
-          onAiGenerate={() => setShowGeminiDialog(true)}
+          onAiGenerate={() => {
+            const activeLayer = layers.find((l) => l.id === activeLayerId);
+            if (activeLayer?.type === "image") {
+              const imgLayer = activeLayer as ImageLayer;
+              onAiGenerate(imgLayer.dataUrl);
+            }
+          }}
           onRemoveBackground={handleRemoveBackground}
           onSaveLayerAsImage={() => {
             const activeLayer = layers.find((l) => l.id === activeLayerId);
@@ -610,24 +616,6 @@ export function ImageEditor({
           onSelect={handleAddFromGallery}
         />
       )}
-      {showGeminiDialog &&
-        (() => {
-          const activeLayer = layers.find((l) => l.id === activeLayerId);
-          if (activeLayer?.type !== "image") return null;
-          return (
-            <GeminiImageDialog
-              inputImageDataUrl={(activeLayer as ImageLayer).dataUrl}
-              onOpenChange={setShowGeminiDialog}
-              onSaveAsLayer={(dataUrl) => {
-                const img = new window.Image();
-                img.onload = () =>
-                  addImageLayer(dataUrl, img.width, img.height);
-                img.src = dataUrl;
-              }}
-              open={showGeminiDialog}
-            />
-          );
-        })()}
 
       {/* Confirm close dialog */}
       <AlertDialog onOpenChange={setShowConfirmClose} open={showConfirmClose}>
