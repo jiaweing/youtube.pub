@@ -10,14 +10,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useEditorStore } from "@/stores/useEditorStore";
+import { useEditorStore } from "@/stores/use-editor-store";
 
 export function LayersPanel() {
   const {
@@ -118,36 +118,36 @@ export function LayersPanel() {
               {/* Move buttons */}
               <div className="flex shrink-0">
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="size-6"
-                      disabled={realIdx === layers.length - 1}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveLayer(layer.id, "up");
-                      }}
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <ChevronUp className="size-3" />
-                    </Button>
+                  <TooltipTrigger
+                    className={buttonVariants({
+                      size: "icon-sm",
+                      variant: "ghost",
+                      className: "size-6",
+                    })}
+                    disabled={realIdx === layers.length - 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveLayer(layer.id, "up");
+                    }}
+                  >
+                    <ChevronUp className="size-3" />
                   </TooltipTrigger>
                   <TooltipContent>Move up</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="size-6"
-                      disabled={realIdx === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveLayer(layer.id, "down");
-                      }}
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <ChevronDown className="size-3" />
-                    </Button>
+                  <TooltipTrigger
+                    className={buttonVariants({
+                      size: "icon-sm",
+                      variant: "ghost",
+                      className: "size-6",
+                    })}
+                    disabled={realIdx === 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveLayer(layer.id, "down");
+                    }}
+                  >
+                    <ChevronDown className="size-3" />
                   </TooltipTrigger>
                   <TooltipContent>Move down</TooltipContent>
                 </Tooltip>

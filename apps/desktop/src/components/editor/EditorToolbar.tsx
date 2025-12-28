@@ -7,13 +7,13 @@ import {
   Wand2,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useEditorStore } from "@/stores/useEditorStore";
+import { useEditorStore } from "@/stores/use-editor-store";
 
 interface EditorToolbarProps {
   isProcessing: boolean;
@@ -68,14 +68,14 @@ export function EditorToolbar({
   return (
     <div className="flex w-12 shrink-0 flex-col items-center gap-1 border-border border-r bg-background py-2">
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            onClick={() => setActiveTool("select")}
-            size="icon-sm"
-            variant={activeTool === "select" ? "secondary" : "ghost"}
-          >
-            <MousePointer className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({
+            size: "icon-sm",
+            variant: activeTool === "select" ? "secondary" : "ghost",
+          })}
+          onClick={() => setActiveTool("select")}
+        >
+          <MousePointer className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Select (V)</TooltipContent>
       </Tooltip>
@@ -83,42 +83,38 @@ export function EditorToolbar({
       <div className="my-1 h-px w-8 bg-border" />
 
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button onClick={onAddImage} size="icon-sm" variant="ghost">
-            <ImagePlus className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+          onClick={onAddImage}
+        >
+          <ImagePlus className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Add Image</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button onClick={handleAddText} size="icon-sm" variant="ghost">
-            <Type className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+          onClick={handleAddText}
+        >
+          <Type className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Add Text</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            onClick={() => handleAddShape("rect")}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <RectangleHorizontal className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+          onClick={() => handleAddShape("rect")}
+        >
+          <RectangleHorizontal className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Add Rectangle</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            onClick={() => handleAddShape("ellipse")}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <Circle className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+          onClick={() => handleAddShape("ellipse")}
+        >
+          <Circle className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Add Ellipse</TooltipContent>
       </Tooltip>
@@ -126,15 +122,12 @@ export function EditorToolbar({
       <div className="my-1 h-px w-8 bg-border" />
 
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            disabled={!canRemoveBg}
-            onClick={onRemoveBackground}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <Wand2 className="size-4" />
-          </Button>
+        <TooltipTrigger
+          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+          disabled={!canRemoveBg}
+          onClick={onRemoveBackground}
+        >
+          <Wand2 className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Remove Background</TooltipContent>
       </Tooltip>

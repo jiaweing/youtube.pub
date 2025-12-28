@@ -4,13 +4,13 @@ import { Uniwind, useUniwind } from "uniwind";
 
 type ThemeName = "light" | "dark";
 
-type AppThemeContextType = {
+interface AppThemeContextType {
   currentTheme: string;
   isLight: boolean;
   isDark: boolean;
   setTheme: (theme: ThemeName) => void;
   toggleTheme: () => void;
-};
+}
 
 const AppThemeContext = createContext<AppThemeContextType | undefined>(
   undefined

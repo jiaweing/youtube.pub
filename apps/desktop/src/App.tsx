@@ -7,7 +7,7 @@ import { ImageEditor } from "@/components/ImageEditor";
 import { TitleBar } from "@/components/TitleBar";
 import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
-import type { ThumbnailItem } from "@/stores/useGalleryStore";
+import type { ThumbnailItem } from "@/stores/use-gallery-store";
 
 export type ViewMode = "3" | "4" | "5" | "row";
 type Page = "gallery" | "editor";

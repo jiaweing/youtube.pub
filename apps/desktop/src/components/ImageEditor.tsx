@@ -18,7 +18,7 @@ import { KonvaCanvas } from "@/components/editor/KonvaCanvas";
 import { LayersPanel } from "@/components/editor/LayersPanel";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { GalleryPicker } from "@/components/GalleryPicker";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -36,8 +36,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { VerticalResizablePanel } from "@/components/ui/vertical-resizable-panel";
-import { useEditorStore } from "@/stores/useEditorStore";
-import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
+import { useEditorStore } from "@/stores/use-editor-store";
+import {
+  type ThumbnailItem,
+  useGalleryStore,
+} from "@/stores/use-gallery-store";
 
 interface ImageEditorProps {
   thumbnail: ThumbnailItem;
@@ -189,7 +192,9 @@ export function ImageEditor({
     }
     setIsProcessing(true);
     try {
-      const { removeBackgroundAsync } = await import("@/lib/backgroundRemoval");
+      const { removeBackgroundAsync } = await import(
+        "@/lib/background-removal"
+      );
       const resultDataUrl = await removeBackgroundAsync(activeLayer.dataUrl);
       const img = new window.Image();
       img.onload = () => addImageLayer(resultDataUrl, img.width, img.height);
@@ -267,21 +272,20 @@ export function ImageEditor({
         data-tauri-drag-region
       >
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className="relative z-[101]"
-              onClick={onClose}
-              size="icon-sm"
-              variant="ghost"
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
+          <TooltipTrigger
+            className={`${buttonVariants({
+              size: "icon-sm",
+              variant: "ghost",
+            })} relative z-101`}
+            onClick={onClose}
+          >
+            <ArrowLeft className="size-4" />
           </TooltipTrigger>
           <TooltipContent>Back to Gallery</TooltipContent>
         </Tooltip>
         {isEditingName ? (
           <input
-            className="relative z-[101] max-w-[200px] border-none bg-transparent text-sm outline-none"
+            className="relative z-101 max-w-50 border-none bg-transparent text-sm outline-none"
             defaultValue={projectName}
             onBlur={(e) => {
               setProjectName(e.target.value);
@@ -302,7 +306,7 @@ export function ImageEditor({
           />
         ) : (
           <span
-            className="relative z-[101] cursor-text truncate text-muted-foreground text-sm hover:text-foreground"
+            className="relative z-101 cursor-text truncate text-muted-foreground text-sm hover:text-foreground"
             onClick={() => {
               setIsEditingName(true);
               setTimeout(() => nameInputRef.current?.focus(), 0);
@@ -343,16 +347,14 @@ export function ImageEditor({
           {/* Footer controls */}
           <div className="flex shrink-0 items-center justify-between border-border border-t bg-background px-3 py-2">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="cursor-pointer text-muted-foreground text-xs hover:text-foreground"
-                  onClick={() => setShowCanvasSizeDialog(true)}
-                  type="button"
-                >
-                  {isProcessing
-                    ? "Processing..."
-                    : `${canvasSize.width} × ${canvasSize.height}`}
-                </button>
+              <TooltipTrigger
+                className="cursor-pointer text-muted-foreground text-xs hover:text-foreground"
+                onClick={() => setShowCanvasSizeDialog(true)}
+                type="button"
+              >
+                {isProcessing
+                  ? "Processing..."
+                  : `${canvasSize.width} × ${canvasSize.height}`}
               </TooltipTrigger>
               <TooltipContent>Change Canvas Size</TooltipContent>
             </Tooltip>
@@ -485,28 +487,28 @@ export function ImageEditor({
             {/* Undo/Redo */}
             <div className="flex items-center gap-0.5">
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    disabled={!canUndo()}
-                    onClick={undo}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <Undo2 className="size-3" />
-                  </Button>
+                <TooltipTrigger
+                  className={buttonVariants({
+                    size: "icon-sm",
+                    variant: "ghost",
+                  })}
+                  disabled={!canUndo()}
+                  onClick={undo}
+                >
+                  <Undo2 className="size-3" />
                 </TooltipTrigger>
                 <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
               </Tooltip>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    disabled={!canRedo()}
-                    onClick={redo}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <Redo2 className="size-3" />
-                  </Button>
+                <TooltipTrigger
+                  className={buttonVariants({
+                    size: "icon-sm",
+                    variant: "ghost",
+                  })}
+                  disabled={!canRedo()}
+                  onClick={redo}
+                >
+                  <Redo2 className="size-3" />
                 </TooltipTrigger>
                 <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
               </Tooltip>

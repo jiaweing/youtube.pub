@@ -4,7 +4,7 @@ let worker: Worker | null = null;
 function getWorker(): Worker {
   if (!worker) {
     worker = new Worker(
-      new URL("../workers/backgroundRemoval.worker.ts", import.meta.url),
+      new URL("../workers/background-removal.worker.ts", import.meta.url),
       { type: "module" }
     );
   }

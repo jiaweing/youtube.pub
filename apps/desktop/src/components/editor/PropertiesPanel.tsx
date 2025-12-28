@@ -1,4 +1,4 @@
-import { Italic } from "lucide-react";
+import { Bold, Italic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,7 +6,7 @@ import {
   type ShapeLayer,
   type TextLayer,
   useEditorStore,
-} from "@/stores/useEditorStore";
+} from "@/stores/use-editor-store";
 
 const FALLBACK_FONTS = [
   "Inter",
@@ -66,9 +66,7 @@ export function PropertiesPanel() {
       lastPushRef.current = now;
     }
   };
-  const _update = (updates: Partial<Layer>) => {
-    updateLayer(activeLayer.id, updates);
-  };
+
   const updateWithHistory = (updates: Partial<Layer>) => {
     pushHistoryDebounced();
     updateLayer(activeLayer.id, updates);

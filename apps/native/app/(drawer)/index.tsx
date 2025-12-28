@@ -9,10 +9,10 @@ import { authClient } from "@/lib/auth-client";
 export default function Home() {
   const { data: session } = authClient.useSession();
 
-  const mutedColor = useThemeColor("muted");
-  const successColor = useThemeColor("success");
-  const dangerColor = useThemeColor("danger");
-  const foregroundColor = useThemeColor("foreground");
+  const _mutedColor = useThemeColor("muted");
+  const _successColor = useThemeColor("success");
+  const _dangerColor = useThemeColor("danger");
+  const _foregroundColor = useThemeColor("foreground");
 
   return (
     <Container className="p-6">

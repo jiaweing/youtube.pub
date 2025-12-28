@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -41,8 +41,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { type ThumbnailItem, useGalleryStore } from "@/stores/useGalleryStore";
-import { useSelectionStore } from "@/stores/useSelectionStore";
+import {
+  type ThumbnailItem,
+  useGalleryStore,
+} from "@/stores/use-gallery-store";
+import { useSelectionStore } from "@/stores/use-selection-store";
 
 interface GalleryProps {
   viewMode: ViewMode;
@@ -74,7 +77,7 @@ export function Gallery({
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
   const selectedIds = useSelectionStore((s) => s.selectedIds);
   const toggleSelection = useSelectionStore((s) => s.toggleSelection);
-  const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
+
   const selectAll = useSelectionStore((s) => s.selectAll);
 
   const thumbnails = useMemo(() => {
@@ -103,7 +106,9 @@ export function Gallery({
   // Handle drag selection
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const handleMouseDown = (e: MouseEvent) => {
       // Create a specialized type guard or check if the target is a thumbnail or button
@@ -133,7 +138,9 @@ export function Gallery({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!(isDragging.current && startPoint.current)) return;
+      if (!(isDragging.current && startPoint.current)) {
+        return;
+      }
 
       const rect = container.getBoundingClientRect();
       const currentX = e.clientX - rect.left + container.scrollLeft;
@@ -170,7 +177,9 @@ export function Gallery({
 
         if (isIntersecting) {
           const id = el.getAttribute("data-thumbnail-id");
-          if (id) newSelectedIds.push(id);
+          if (id) {
+            newSelectedIds.push(id);
+          }
         }
       });
 
@@ -194,7 +203,7 @@ export function Gallery({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isSelectionMode, selectAll, thumbnails]); // Re-bind if thumbnails change (layout might change)
+  }, [isSelectionMode, selectAll]); // Re-bind if thumbnails change (layout might change)
 
   const gridCols = {
     "3": "grid-cols-3",
@@ -241,7 +250,7 @@ export function Gallery({
 
       try {
         const { removeBackgroundAsync } = await import(
-          "@/lib/backgroundRemoval"
+          "@/lib/background-removal"
         );
         const resultDataUrl = await removeBackgroundAsync(thumbnail.dataUrl);
         addThumbnail(resultDataUrl, `${thumbnail.name} (no bg)`);
@@ -314,7 +323,9 @@ export function Gallery({
             data-thumbnail-id={thumbnail.id}
             key={thumbnail.id}
             onClick={() => {
-              if (processingId === thumbnail.id) return;
+              if (processingId === thumbnail.id) {
+                return;
+              }
               if (isSelectionMode) {
                 toggleSelection(thumbnail.id);
               } else {
@@ -343,7 +354,7 @@ export function Gallery({
               </div>
             )}
             {/* Single gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
               {processingId === thumbnail.id ? (
                 <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
                   Processing...
@@ -354,47 +365,47 @@ export function Gallery({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={(e) => handleRemoveBackground(e, thumbnail)}
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Wand2 className="size-4" />
-                      </Button>
+                    <TooltipTrigger
+                      className={buttonVariants({
+                        size: "icon-sm",
+                        variant: "ghost",
+                      })}
+                      onClick={(e) => handleRemoveBackground(e, thumbnail)}
+                    >
+                      <Wand2 className="size-4" />
                     </TooltipTrigger>
                     <TooltipContent>Remove Background</TooltipContent>
                   </Tooltip>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onExportClick(thumbnail);
-                        }}
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Download className="size-4" />
-                      </Button>
+                    <TooltipTrigger
+                      className={buttonVariants({
+                        size: "icon-sm",
+                        variant: "ghost",
+                      })}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExportClick(thumbnail);
+                      }}
+                    >
+                      <Download className="size-4" />
                     </TooltipTrigger>
                     <TooltipContent>Export</TooltipContent>
                   </Tooltip>
                   <div className="relative">
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(
-                              menuOpenId === thumbnail.id ? null : thumbnail.id
-                            );
-                          }}
-                          size="icon-sm"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
+                      <TooltipTrigger
+                        className={buttonVariants({
+                          size: "icon-sm",
+                          variant: "ghost",
+                        })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId(
+                            menuOpenId === thumbnail.id ? null : thumbnail.id
+                          );
+                        }}
+                      >
+                        <MoreHorizontal className="size-4" />
                       </TooltipTrigger>
                       <TooltipContent>More</TooltipContent>
                     </Tooltip>
@@ -460,10 +471,8 @@ export function Gallery({
               )}
               <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="block truncate text-sm text-white">
-                      {thumbnail.name}
-                    </span>
+                  <TooltipTrigger className="block truncate text-sm text-white">
+                    {thumbnail.name}
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-0.5">

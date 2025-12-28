@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useGalleryStore } from "./useGalleryStore";
+import { useGalleryStore } from "./use-gallery-store";
 
 export type QueueItemStatus = "pending" | "processing" | "done" | "error";
 
@@ -52,10 +52,14 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
 
     processQueue: async () => {
       const { queue, isProcessing } = get();
-      if (isProcessing) return;
+      if (isProcessing) {
+        return;
+      }
 
       const pendingItem = queue.find((item) => item.status === "pending");
-      if (!pendingItem) return;
+      if (!pendingItem) {
+        return;
+      }
 
       set({ isProcessing: true });
 
@@ -73,7 +77,7 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
         }
 
         const { removeBackgroundAsync } = await import(
-          "@/lib/backgroundRemoval"
+          "@/lib/background-removal"
         );
         const resultDataUrl = await removeBackgroundAsync(dataUrl);
 

@@ -16,7 +16,7 @@ import {
   type ShapeLayer as ShapeLayerType,
   type TextLayer as TextLayerType,
   useEditorStore,
-} from "@/stores/useEditorStore";
+} from "@/stores/use-editor-store";
 
 interface KonvaCanvasProps {
   width: number;

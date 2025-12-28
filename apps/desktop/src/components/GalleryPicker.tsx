@@ -1,4 +1,5 @@
-import { useGalleryStore } from "@/stores/useGalleryStore";
+import { Image } from "lucide-react";
+import { useGalleryStore } from "@/stores/use-gallery-store";
 import { Button } from "./ui/button";
 
 interface GalleryPickerProps {
@@ -12,12 +13,12 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
   if (thumbnails.length === 0) {
     return (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+        className="fixed inset-0 z-60 flex items-center justify-center bg-black/60"
         onClick={onClose}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
         <div
-          className="w-[400px] rounded-xl border border-border bg-card p-6 text-center"
+          className="w-100 rounded-xl border border-border bg-card p-6 text-center"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={() => {}}
         >
@@ -33,12 +34,12 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/60"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <div
-        className="max-h-[80vh] w-[600px] overflow-hidden rounded-xl border border-border bg-card"
+        className="max-h-[80vh] w-150 overflow-hidden rounded-xl border border-border bg-card"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={() => {}}
       >

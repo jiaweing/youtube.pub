@@ -168,7 +168,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
         className
       )}
       data-slot="carousel-item"
-      role="group"
+      data-slot="carousel-item"
       {...props}
     />
   );
@@ -235,11 +235,11 @@ function CarouselNext({
 }
 
 export {
-  type CarouselApi,
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
   CarouselNext,
+  CarouselPrevious,
   useCarousel,
+  type CarouselApi,
 };

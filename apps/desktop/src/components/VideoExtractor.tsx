@@ -2,7 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useGalleryStore } from "@/stores/useGalleryStore";
+import { useGalleryStore } from "@/stores/use-gallery-store";
 
 interface VideoExtractorProps {
   onClose: () => void;

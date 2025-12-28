@@ -1,6 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
 import { create } from "zustand";
-import type { Layer } from "@/stores/useEditorStore";
 export interface ThumbnailItem {
   id: string;
   name: string;

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
+import { useBackgroundRemovalQueue } from "@/stores/use-background-removal-queue";
 
 export function BackgroundRemovalQueue() {
   const queue = useBackgroundRemovalQueue((s) => s.queue);
@@ -27,7 +27,9 @@ export function BackgroundRemovalQueue() {
     }
   }, [queue]);
 
-  if (!isVisible && queue.length === 0) return null;
+  if (!isVisible && queue.length === 0) {
+    return null;
+  }
 
   const pendingCount = queue.filter(
     (i) => i.status === "pending" || i.status === "processing"

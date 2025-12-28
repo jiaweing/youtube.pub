@@ -31,9 +31,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useBackgroundRemovalQueue } from "@/stores/useBackgroundRemovalQueue";
-import { type SortField, useGalleryStore } from "@/stores/useGalleryStore";
-import { useSelectionStore } from "@/stores/useSelectionStore";
+import { useBackgroundRemovalQueue } from "@/stores/use-background-removal-queue";
+import { type SortField, useGalleryStore } from "@/stores/use-gallery-store";
+import { useSelectionStore } from "@/stores/use-selection-store";
 
 interface HeaderProps {
   viewMode: ViewMode;

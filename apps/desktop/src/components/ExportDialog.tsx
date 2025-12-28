@@ -3,7 +3,7 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ThumbnailItem } from "@/stores/useGalleryStore";
+import type { ThumbnailItem } from "@/stores/use-gallery-store";
 
 interface ExportDialogProps {
   thumbnail: ThumbnailItem;
@@ -110,7 +110,7 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <div
-        className="w-[400px] rounded-xl border border-border bg-card"
+        className="w-100 rounded-xl border border-border bg-card"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={() => {}}
       >
