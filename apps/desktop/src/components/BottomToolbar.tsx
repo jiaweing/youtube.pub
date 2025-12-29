@@ -89,8 +89,10 @@ export function BottomToolbar({
   const setSortField = useGalleryStore((s) => s.setSortField);
   const setSortOrder = useGalleryStore((s) => s.setSortOrder);
   const thumbnails = useGalleryStore((s) => s.thumbnails);
-  const duplicateThumbnail = useGalleryStore((s) => s.duplicateThumbnail);
-  const deleteThumbnail = useGalleryStore((s) => s.deleteThumbnail);
+  const duplicateThumbnailsBatch = useGalleryStore(
+    (s) => s.duplicateThumbnailsBatch
+  );
+  const deleteThumbnailsBatch = useGalleryStore((s) => s.deleteThumbnailsBatch);
 
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
   const selectedIds = useSelectionStore((s) => s.selectedIds);
@@ -104,22 +106,16 @@ export function BottomToolbar({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleBulkDuplicate = useCallback(async () => {
-    let count = 0;
-    for (const id of selectedIds) {
-      await duplicateThumbnail(id);
-      count++;
-    }
-    toast.success(`Duplicated ${count} items`);
+    const ids = Array.from(selectedIds);
+    await duplicateThumbnailsBatch(ids);
+    toast.success(`Duplicated ${ids.length} items`);
     clearSelection();
-  }, [selectedIds, duplicateThumbnail, clearSelection]);
+  }, [selectedIds, duplicateThumbnailsBatch, clearSelection]);
 
   const handleBulkDelete = async () => {
-    let count = 0;
-    for (const id of selectedIds) {
-      await deleteThumbnail(id);
-      count++;
-    }
-    toast.success(`Deleted ${count} items`);
+    const ids = Array.from(selectedIds);
+    await deleteThumbnailsBatch(ids);
+    toast.success(`Deleted ${ids.length} items`);
     setDeleteDialogOpen(false);
     clearSelection();
   };

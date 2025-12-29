@@ -33,6 +33,7 @@
     "react-dom": "^19.2.3",
     "react-konva": "^19.2.1",
     "react-resizable-panels": "^4.0.15",
+    "react-virtuoso": "^4.18.0",
     "recharts": "2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",

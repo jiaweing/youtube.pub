@@ -1,24 +1,25 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
-  Check,
   CheckSquare,
-  Circle,
-  Copy,
-  Download,
   GalleryThumbnails,
   Grid2X2,
   ImagePlus,
   MonitorPlay,
-  MoreHorizontal,
-  Pencil,
   Plus,
-  Trash2,
-  Wand2,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  type HTMLAttributes,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { VirtuosoGrid } from "react-virtuoso";
 import { toast } from "sonner";
 import type { ViewMode } from "@/App";
+import { ThumbnailGridItem } from "@/components/ThumbnailGridItem";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -46,11 +47,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { VideoExtractor } from "@/components/VideoExtractor";
 import { cn } from "@/lib/utils";
 import {
@@ -65,13 +61,41 @@ interface GalleryProps {
   onExportClick: (thumbnail: ThumbnailItem) => void;
 }
 
+// Stable grid components - MUST be defined outside component to prevent remounting
+const GridList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ children, style, className, ...props }, ref) => (
+    <div
+      ref={ref}
+      style={style}
+      {...props}
+      className={cn("grid gap-4 p-4", className)}
+    >
+      {children}
+    </div>
+  )
+);
+GridList.displayName = "GridList";
+
+const GridItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ children, ...props }, ref) => (
+    <div ref={ref} {...props}>
+      {children}
+    </div>
+  )
+);
+GridItem.displayName = "GridItem";
+
+const gridComponents = {
+  List: GridList,
+  Item: GridItem,
+};
+
 export function Gallery({
   viewMode,
   onThumbnailClick,
   onExportClick,
 }: GalleryProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showVideoExtractor, setShowVideoExtractor] = useState(false);
@@ -79,7 +103,6 @@ export function Gallery({
     useState<ThumbnailItem | null>(null);
   const [newName, setNewName] = useState("");
   const addThumbnail = useGalleryStore((s) => s.addThumbnail);
-  const duplicateThumbnail = useGalleryStore((s) => s.duplicateThumbnail);
   const deleteThumbnail = useGalleryStore((s) => s.deleteThumbnail);
   const updateThumbnailName = useGalleryStore((s) => s.updateThumbnailName);
   const sortField = useGalleryStore((s) => s.sortField);
@@ -88,9 +111,6 @@ export function Gallery({
 
   // Selection mode
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
-  const selectedIds = useSelectionStore((s) => s.selectedIds);
-  const toggleSelection = useSelectionStore((s) => s.toggleSelection);
-
   const selectAll = useSelectionStore((s) => s.selectAll);
   const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
   const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
@@ -107,8 +127,20 @@ export function Gallery({
     });
   }, [rawThumbnails, sortField, sortOrder]);
 
+  // Get grid column class based on viewMode
+  const gridColClass = useMemo(() => {
+    const gridClasses: Record<ViewMode, string> = {
+      "3": "grid-cols-3",
+      "4": "grid-cols-4",
+      "5": "grid-cols-5",
+      row: "grid-cols-1",
+    };
+    return gridClasses[viewMode];
+  }, [viewMode]);
+
   // Drag selection state
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const isDragging = useRef(false);
   const startPoint = useRef<{ x: number; y: number } | null>(null);
   const [selectionBox, setSelectionBox] = useState<{
@@ -120,7 +152,7 @@ export function Gallery({
 
   // Handle drag selection
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const container = containerRef.current;
+    const container = scrollerRef.current;
     if (!container) {
       return;
     }
@@ -178,7 +210,7 @@ export function Gallery({
       const thumbnailElements = container.querySelectorAll(
         "[data-thumbnail-id]"
       );
-      thumbnailElements.forEach((el) => {
+      for (const el of thumbnailElements) {
         const elRect = (el as HTMLElement).getBoundingClientRect();
         // Convert elRect to container-relative coordinates
         const elRelLeft = elRect.left - rect.left + container.scrollLeft;
@@ -198,10 +230,9 @@ export function Gallery({
             newSelectedIds.push(id);
           }
         }
-      });
+      }
 
       // Update selection store - replace current selection with what's in box
-      // (Advanced: support shift/ctrl modifiers for add/remove)
       useSelectionStore.getState().selectAll(newSelectedIds);
     };
 
@@ -216,13 +247,6 @@ export function Gallery({
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   }, []);
-
-  const gridCols = {
-    "3": "grid-cols-3",
-    "4": "grid-cols-4",
-    "5": "grid-cols-5",
-    row: "grid-cols-1",
-  };
 
   const handleAddImage = useCallback(async () => {
     const selected = await open({
@@ -275,16 +299,49 @@ export function Gallery({
     [addThumbnail]
   );
 
-  // Ghost add button
-  const AddImageButton = (
-    <button
-      className="flex aspect-video cursor-pointer items-center justify-center rounded-lg border-2 border-muted-foreground/30 border-dashed transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
-      onClick={handleAddImage}
-      type="button"
-    >
-      <Plus className="size-8 text-muted-foreground/50" />
-    </button>
-  );
+  const handleRename = useCallback((thumbnail: ThumbnailItem) => {
+    setSelectedThumbnail(thumbnail);
+    setNewName(thumbnail.name);
+    setRenameDialogOpen(true);
+  }, []);
+
+  const handleDelete = useCallback((thumbnail: ThumbnailItem) => {
+    setSelectedThumbnail(thumbnail);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Item renderer for VirtuosoGrid - no useCallback to avoid stale closure issues
+  const itemContent = (index: number) => {
+    // First item is the add button
+    if (index === 0) {
+      return (
+        <button
+          className="flex aspect-video h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-muted-foreground/30 border-dashed transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
+          onClick={handleAddImage}
+          type="button"
+        >
+          <Plus className="size-8 text-muted-foreground/50" />
+        </button>
+      );
+    }
+
+    const thumbnail = thumbnails[index - 1];
+    if (!thumbnail) {
+      return null;
+    }
+
+    return (
+      <ThumbnailGridItem
+        isProcessing={processingId === thumbnail.id}
+        onDelete={handleDelete}
+        onExportClick={onExportClick}
+        onRemoveBackground={handleRemoveBackground}
+        onRename={handleRename}
+        onThumbnailClick={onThumbnailClick}
+        thumbnail={thumbnail}
+      />
+    );
+  };
 
   if (thumbnails.length === 0) {
     return (
@@ -305,11 +362,11 @@ export function Gallery({
   }
 
   return (
-    <div className="relative flex h-full flex-1 select-none flex-col">
+    <div className="relative flex-1 select-none">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            className="flex-1 overflow-y-auto p-4 outline-none"
+            className="absolute inset-0 overflow-hidden"
             onMouseDown={handleMouseDown}
             ref={containerRef}
           >
@@ -324,252 +381,17 @@ export function Gallery({
                 }}
               />
             )}
-            <div className={cn("grid gap-4", gridCols[viewMode])}>
-              {/* Ghost add button as first item */}
-              {AddImageButton}
-
-              {thumbnails.map((thumbnail) => (
-                <ContextMenu key={thumbnail.id}>
-                  <ContextMenuTrigger asChild>
-                    <div
-                      className={cn(
-                        "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
-                        isSelectionMode &&
-                          selectedIds.has(thumbnail.id) &&
-                          "ring-2 ring-primary"
-                      )}
-                      data-thumbnail-id={thumbnail.id}
-                      onClick={() => {
-                        if (processingId === thumbnail.id) {
-                          return;
-                        }
-                        if (isSelectionMode) {
-                          toggleSelection(thumbnail.id);
-                        } else {
-                          onThumbnailClick(thumbnail);
-                        }
-                      }}
-                      onKeyDown={() => {}}
-                    >
-                      <img
-                        alt={thumbnail.name}
-                        className="h-full w-full object-cover"
-                        src={thumbnail.dataUrl}
-                      />
-                      {/* Selection checkbox overlay */}
-                      {isSelectionMode && (
-                        <div className="absolute top-2 left-2 z-20">
-                          {selectedIds.has(thumbnail.id) ? (
-                            <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
-                              <Check className="size-4" />
-                            </div>
-                          ) : (
-                            <div className="flex size-6 items-center justify-center rounded-full border-2 border-white/80 bg-black/30 shadow-md">
-                              <Circle className="size-4 text-transparent" />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {/* Single gradient overlay */}
-                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
-                        {processingId === thumbnail.id ? (
-                          <span className="absolute inset-0 flex items-center justify-center text-sm text-white">
-                            Processing...
-                          </span>
-                        ) : isSelectionMode ? null : (
-                          <div
-                            className="absolute right-2 bottom-2 z-10 flex gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Tooltip>
-                              <TooltipTrigger
-                                className={buttonVariants({
-                                  size: "icon-sm",
-                                  variant: "ghost",
-                                })}
-                                onClick={(e) =>
-                                  handleRemoveBackground(e, thumbnail)
-                                }
-                              >
-                                <Wand2 className="size-4" />
-                              </TooltipTrigger>
-                              <TooltipContent>Remove Background</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger
-                                className={buttonVariants({
-                                  size: "icon-sm",
-                                  variant: "ghost",
-                                })}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onExportClick(thumbnail);
-                                }}
-                              >
-                                <Download className="size-4" />
-                              </TooltipTrigger>
-                              <TooltipContent>Export</TooltipContent>
-                            </Tooltip>
-                            <div className="relative">
-                              <Tooltip>
-                                <TooltipTrigger
-                                  className={buttonVariants({
-                                    size: "icon-sm",
-                                    variant: "ghost",
-                                  })}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMenuOpenId(
-                                      menuOpenId === thumbnail.id
-                                        ? null
-                                        : thumbnail.id
-                                    );
-                                  }}
-                                >
-                                  <MoreHorizontal className="size-4" />
-                                </TooltipTrigger>
-                                <TooltipContent>More</TooltipContent>
-                              </Tooltip>
-                              {menuOpenId === thumbnail.id && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMenuOpenId(null);
-                                    }}
-                                    onKeyDown={() => {}}
-                                  />
-                                  <div className="absolute right-0 bottom-full z-50 mb-2 w-36 rounded-lg border border-border bg-card p-1 shadow-lg">
-                                    <Button
-                                      className="w-full justify-start"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        await duplicateThumbnail(thumbnail.id);
-                                        toast.success("Thumbnail duplicated");
-                                        setMenuOpenId(null);
-                                      }}
-                                      size="sm"
-                                      variant="ghost"
-                                    >
-                                      <Copy className="mr-2 size-4" />
-                                      Duplicate
-                                    </Button>
-                                    <Button
-                                      className="w-full justify-start"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedThumbnail(thumbnail);
-                                        setNewName(thumbnail.name);
-                                        setRenameDialogOpen(true);
-                                        setMenuOpenId(null);
-                                      }}
-                                      size="sm"
-                                      variant="ghost"
-                                    >
-                                      <Pencil className="mr-2 size-4" />
-                                      Rename
-                                    </Button>
-                                    <Button
-                                      className="w-full justify-start text-destructive hover:text-destructive"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedThumbnail(thumbnail);
-                                        setDeleteDialogOpen(true);
-                                        setMenuOpenId(null);
-                                      }}
-                                      size="sm"
-                                      variant="ghost"
-                                    >
-                                      <Trash2 className="mr-2 size-4" />
-                                      Delete
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <div className="absolute bottom-0 left-0 max-w-[60%] px-3 py-2">
-                          <Tooltip>
-                            <TooltipTrigger className="block truncate text-sm text-white">
-                              {thumbnail.name}
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="space-y-0.5">
-                                <p className="font-medium">{thumbnail.name}</p>
-                                {thumbnail.canvasWidth &&
-                                  thumbnail.canvasHeight && (
-                                    <p className="text-muted-foreground text-xs">
-                                      {thumbnail.canvasWidth} ×{" "}
-                                      {thumbnail.canvasHeight}
-                                    </p>
-                                  )}
-                                <p className="text-muted-foreground text-xs">
-                                  Updated:{" "}
-                                  {new Date(
-                                    thumbnail.updatedAt
-                                  ).toLocaleString()}
-                                </p>
-                                <p className="text-muted-foreground text-xs">
-                                  Created:{" "}
-                                  {new Date(
-                                    thumbnail.createdAt
-                                  ).toLocaleString()}
-                                </p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      onClick={async () => {
-                        await duplicateThumbnail(thumbnail.id);
-                        toast.success("Thumbnail duplicated");
-                      }}
-                    >
-                      <Copy className="mr-2 size-4" />
-                      Duplicate
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={() => {
-                        setSelectedThumbnail(thumbnail);
-                        setNewName(thumbnail.name);
-                        setRenameDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="mr-2 size-4" />
-                      Rename
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => onExportClick(thumbnail)}>
-                      <Download className="mr-2 size-4" />
-                      Export
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={(e) => handleRemoveBackground(e, thumbnail)}
-                    >
-                      <Wand2 className="mr-2 size-4" />
-                      Remove Background
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => {
-                        setSelectedThumbnail(thumbnail);
-                        setDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Delete
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
+            <VirtuosoGrid
+              components={gridComponents}
+              itemContent={itemContent}
+              listClassName={gridColClass}
+              overscan={600}
+              scrollerRef={(ref) => {
+                scrollerRef.current = ref as HTMLDivElement;
+              }}
+              style={{ height: "100%", width: "100%" }}
+              totalCount={thumbnails.length + 1} // +1 for add button
+            />
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>

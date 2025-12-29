@@ -22,6 +22,8 @@ interface GalleryState {
   setSortOrder: (order: SortOrder) => void;
   addThumbnail: (dataUrl: string, name?: string) => Promise<void>;
   duplicateThumbnail: (id: string) => Promise<void>;
+  duplicateThumbnailsBatch: (ids: string[]) => Promise<void>;
+  deleteThumbnailsBatch: (ids: string[]) => Promise<void>;
   saveProject: (
     id: string | null,
     name: string,
@@ -146,6 +148,64 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
       console.log("[Gallery] Duplicate saved:", newItem.id);
     } catch (error) {
       console.error("[Gallery] Failed to duplicate thumbnail:", error);
+      set({ dbError: String(error) });
+    }
+  },
+  duplicateThumbnailsBatch: async (ids) => {
+    const state = get();
+    const originals = ids
+      .map((id) => state.thumbnails.find((t) => t.id === id))
+      .filter((t): t is ThumbnailItem => t !== undefined);
+
+    if (originals.length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    const newItems: ThumbnailItem[] = originals.map((original, index) => ({
+      id: crypto.randomUUID(),
+      name: `${original.name} (Copy)`,
+      dataUrl: original.dataUrl,
+      createdAt: now + index, // Slightly different timestamps to maintain order
+      updatedAt: now + index,
+      layerData: original.layerData,
+      canvasWidth: original.canvasWidth,
+      canvasHeight: original.canvasHeight,
+    }));
+
+    console.log("[Gallery] Batch duplicating", newItems.length, "thumbnails");
+
+    // Single state update for all items
+    set((state) => ({ thumbnails: [...newItems, ...state.thumbnails] }));
+
+    // Batch database insert
+    try {
+      const database = await getDb();
+      // Use a transaction for all inserts
+      await database.execute("BEGIN TRANSACTION");
+      for (const item of newItems) {
+        await database.execute(
+          "INSERT INTO thumbnails (id, name, dataUrl, createdAt, updatedAt, layerData, canvasWidth, canvasHeight) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+          [
+            item.id,
+            item.name,
+            item.dataUrl,
+            item.createdAt,
+            item.updatedAt,
+            item.layerData || null,
+            item.canvasWidth || null,
+            item.canvasHeight || null,
+          ]
+        );
+      }
+      await database.execute("COMMIT");
+      console.log("[Gallery] Batch duplicates saved:", newItems.length);
+    } catch (error) {
+      console.error("[Gallery] Failed to batch duplicate:", error);
+      try {
+        const database = await getDb();
+        await database.execute("ROLLBACK");
+      } catch {}
       set({ dbError: String(error) });
     }
   },
@@ -284,6 +344,37 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
       await database.execute("DELETE FROM thumbnails WHERE id = $1", [id]);
     } catch (error) {
       console.error("[Gallery] Failed to delete:", error);
+      set({ dbError: String(error) });
+    }
+  },
+  deleteThumbnailsBatch: async (ids) => {
+    if (ids.length === 0) {
+      return;
+    }
+
+    const idsSet = new Set(ids);
+    console.log("[Gallery] Batch deleting", ids.length, "thumbnails");
+
+    // Single state update
+    set((state) => ({
+      thumbnails: state.thumbnails.filter((t) => !idsSet.has(t.id)),
+    }));
+
+    // Batch database delete with transaction
+    try {
+      const database = await getDb();
+      await database.execute("BEGIN TRANSACTION");
+      for (const id of ids) {
+        await database.execute("DELETE FROM thumbnails WHERE id = $1", [id]);
+      }
+      await database.execute("COMMIT");
+      console.log("[Gallery] Batch delete completed:", ids.length);
+    } catch (error) {
+      console.error("[Gallery] Failed to batch delete:", error);
+      try {
+        const database = await getDb();
+        await database.execute("ROLLBACK");
+      } catch {}
       set({ dbError: String(error) });
     }
   },
