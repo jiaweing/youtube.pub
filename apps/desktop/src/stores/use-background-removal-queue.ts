@@ -14,9 +14,8 @@ export interface QueueItem {
 interface BackgroundRemovalQueueState {
   queue: QueueItem[];
   isProcessing: boolean;
-  addToQueue: (
-    items: { thumbnailId: string; name: string; dataUrl: string }[]
-  ) => void;
+  // Changed: no longer needs dataUrl - will load from files
+  addToQueue: (items: { thumbnailId: string; name: string }[]) => void;
   processQueue: () => Promise<void>;
   removeFromQueue: (id: string) => void;
   clearCompleted: () => void;
@@ -38,11 +37,6 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
       set((state) => ({
         queue: [...state.queue, ...newItems],
       }));
-
-      // Store dataUrls in a map for processing
-      for (const item of items) {
-        dataUrlCache.set(item.thumbnailId, item.dataUrl);
-      }
 
       // Start processing if not already
       if (!get().isProcessing) {
@@ -71,15 +65,19 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
       }));
 
       try {
-        const dataUrl = dataUrlCache.get(pendingItem.thumbnailId);
-        if (!dataUrl) {
-          throw new Error("Image data not found");
+        // Load full image from file storage
+        const loadFullImageForId =
+          useGalleryStore.getState().loadFullImageForId;
+        const fullImageUrl = await loadFullImageForId(pendingItem.thumbnailId);
+
+        if (!fullImageUrl) {
+          throw new Error("Image data not found in file storage");
         }
 
         const { removeBackgroundAsync } = await import(
           "@/lib/background-removal"
         );
-        const resultDataUrl = await removeBackgroundAsync(dataUrl);
+        const resultDataUrl = await removeBackgroundAsync(fullImageUrl);
 
         // Add the result as a new thumbnail
         const addThumbnail = useGalleryStore.getState().addThumbnail;
@@ -91,9 +89,6 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
             item.id === pendingItem.id ? { ...item, status: "done" } : item
           ),
         }));
-
-        // Clean up cache
-        dataUrlCache.delete(pendingItem.thumbnailId);
       } catch (error) {
         // Update status to error
         set((state) => ({
@@ -127,6 +122,3 @@ export const useBackgroundRemovalQueue = create<BackgroundRemovalQueueState>()(
       })),
   })
 );
-
-// Cache for image data URLs (temporary storage during processing)
-const dataUrlCache = new Map<string, string>();

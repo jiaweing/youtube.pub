@@ -1,10 +1,94 @@
-import { Image } from "lucide-react";
+import { Image, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useGalleryStore } from "@/stores/use-gallery-store";
 import { Button } from "./ui/button";
 
 interface GalleryPickerProps {
   onSelect: (dataUrl: string, name: string) => void;
   onClose: () => void;
+}
+
+// Individual thumbnail item that loads its own preview
+function PickerThumbnail({
+  id,
+  name,
+  previewUrl: initialPreviewUrl,
+  onSelect,
+}: {
+  id: string;
+  name: string;
+  previewUrl?: string;
+  onSelect: (dataUrl: string, name: string) => void;
+}) {
+  const loadPreviewForId = useGalleryStore((s) => s.loadPreviewForId);
+  const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
+  const previewCache = useGalleryStore((s) => s.previewCache);
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    initialPreviewUrl || previewCache.get(id) || null
+  );
+  const [isLoading, setIsLoading] = useState(!previewUrl);
+  const [isSelecting, setIsSelecting] = useState(false);
+
+  // Load preview on mount
+  useEffect(() => {
+    if (previewUrl) {
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    loadPreviewForId(id).then((url) => {
+      if (!cancelled) {
+        setPreviewUrl(url);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, previewUrl, loadPreviewForId]);
+
+  const handleClick = useCallback(async () => {
+    setIsSelecting(true);
+    try {
+      // Load full image for the editor
+      const fullUrl = await loadFullImageForId(id);
+      if (fullUrl) {
+        onSelect(fullUrl, name);
+      }
+    } finally {
+      setIsSelecting(false);
+    }
+  }, [id, name, loadFullImageForId, onSelect]);
+
+  return (
+    <Button
+      className="relative aspect-video h-auto overflow-hidden rounded-lg p-0"
+      disabled={isSelecting}
+      onClick={handleClick}
+      variant="ghost"
+    >
+      {isLoading || isSelecting ? (
+        <div className="flex h-full w-full items-center justify-center bg-muted">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : previewUrl ? (
+        <img
+          alt={name}
+          className="h-full w-full object-cover"
+          src={previewUrl}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-muted">
+          <Image className="size-6 text-muted-foreground" />
+        </div>
+      )}
+    </Button>
+  );
 }
 
 export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
@@ -48,18 +132,13 @@ export function GalleryPicker({ onSelect, onClose }: GalleryPickerProps) {
         </div>
         <div className="grid max-h-[60vh] grid-cols-3 gap-2 overflow-y-auto p-4">
           {thumbnails.map((thumb) => (
-            <Button
-              className="aspect-video h-auto overflow-hidden rounded-lg p-0"
+            <PickerThumbnail
+              id={thumb.id}
               key={thumb.id}
-              onClick={() => onSelect(thumb.dataUrl, thumb.name)}
-              variant="ghost"
-            >
-              <img
-                alt={thumb.name}
-                className="h-full w-full object-cover"
-                src={thumb.dataUrl}
-              />
-            </Button>
+              name={thumb.name}
+              onSelect={onSelect}
+              previewUrl={thumb.previewUrl}
+            />
           ))}
         </div>
         <div className="flex justify-end border-border border-t px-5 py-4">

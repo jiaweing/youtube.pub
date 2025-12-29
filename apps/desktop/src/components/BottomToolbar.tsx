@@ -126,7 +126,7 @@ export function BottomToolbar({
       .map((t) => ({
         thumbnailId: t.id,
         name: t.name,
-        dataUrl: t.dataUrl,
+        // No longer passing dataUrl - queue loads from files
       }));
 
     addToQueue(itemsToProcess);

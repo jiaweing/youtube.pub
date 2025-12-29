@@ -5,6 +5,7 @@ import {
   GalleryThumbnails,
   Grid2X2,
   ImagePlus,
+  Loader2,
   MonitorPlay,
   Plus,
 } from "lucide-react";
@@ -53,6 +54,7 @@ import {
   type ThumbnailItem,
   useGalleryStore,
 } from "@/stores/use-gallery-store";
+import { useGalleryUIStore } from "@/stores/use-gallery-ui-store";
 import { useSelectionStore } from "@/stores/use-selection-store";
 
 interface GalleryProps {
@@ -108,12 +110,17 @@ export function Gallery({
   const sortField = useGalleryStore((s) => s.sortField);
   const sortOrder = useGalleryStore((s) => s.sortOrder);
   const rawThumbnails = useGalleryStore((s) => s.thumbnails);
+  const isLoaded = useGalleryStore((s) => s.isLoaded);
 
   // Selection mode
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
   const selectAll = useSelectionStore((s) => s.selectAll);
   const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
   const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
+
+  // Scroll position restoration
+  const lastClickedIndex = useGalleryUIStore((s) => s.lastClickedIndex);
+  const setLastClickedIndex = useGalleryUIStore((s) => s.setLastClickedIndex);
 
   const thumbnails = useMemo(() => {
     return [...rawThumbnails].sort((a, b) => {
@@ -279,16 +286,26 @@ export function Gallery({
     }
   }, [addThumbnail]);
 
+  // Get the loadFullImageForId function from store
+  const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
+
   const handleRemoveBackground = useCallback(
     async (e: React.MouseEvent, thumbnail: ThumbnailItem) => {
       e.stopPropagation();
       setProcessingId(thumbnail.id);
 
       try {
+        // Load full image from file
+        const fullImageUrl = await loadFullImageForId(thumbnail.id);
+        if (!fullImageUrl) {
+          console.error("Failed to load image for background removal");
+          return;
+        }
+
         const { removeBackgroundAsync } = await import(
           "@/lib/background-removal"
         );
-        const resultDataUrl = await removeBackgroundAsync(thumbnail.dataUrl);
+        const resultDataUrl = await removeBackgroundAsync(fullImageUrl);
         addThumbnail(resultDataUrl, `${thumbnail.name} (no bg)`);
       } catch (error) {
         console.error("Background removal failed:", error);
@@ -296,7 +313,7 @@ export function Gallery({
         setProcessingId(null);
       }
     },
-    [addThumbnail]
+    [addThumbnail, loadFullImageForId]
   );
 
   const handleRename = useCallback((thumbnail: ThumbnailItem) => {
@@ -337,11 +354,25 @@ export function Gallery({
         onExportClick={onExportClick}
         onRemoveBackground={handleRemoveBackground}
         onRename={handleRename}
-        onThumbnailClick={onThumbnailClick}
+        onThumbnailClick={(t) => {
+          // Store the clicked index for scroll restoration (index includes +1 offset for add button)
+          setLastClickedIndex(index);
+          onThumbnailClick(t);
+        }}
         thumbnail={thumbnail}
       />
     );
   };
+
+  // Show loading spinner while database is loading
+  if (!isLoaded) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+        <Loader2 className="size-10 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">Loading thumbnails...</p>
+      </div>
+    );
+  }
 
   if (thumbnails.length === 0) {
     return (
@@ -383,6 +414,7 @@ export function Gallery({
             )}
             <VirtuosoGrid
               components={gridComponents}
+              initialTopMostItemIndex={lastClickedIndex ?? 0}
               itemContent={itemContent}
               listClassName={gridColClass}
               overscan={600}

@@ -3,12 +3,13 @@ import {
   Circle,
   Copy,
   Download,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Trash2,
   Wand2,
 } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -57,6 +58,45 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
   const selectedIds = useSelectionStore((s) => s.selectedIds);
   const toggleSelection = useSelectionStore((s) => s.toggleSelection);
   const duplicateThumbnail = useGalleryStore((s) => s.duplicateThumbnail);
+  const loadPreviewForId = useGalleryStore((s) => s.loadPreviewForId);
+  const previewCache = useGalleryStore((s) => s.previewCache);
+
+  // Get preview URL from cache or thumbnail
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    thumbnail.previewUrl || previewCache.get(thumbnail.id) || null
+  );
+  const [isLoadingPreview, setIsLoadingPreview] = useState(!previewUrl);
+
+  // Load preview on mount if not cached
+  useEffect(() => {
+    const cached = previewCache.get(thumbnail.id);
+    if (cached) {
+      setPreviewUrl(cached);
+      setIsLoadingPreview(false);
+      return;
+    }
+
+    if (thumbnail.previewUrl) {
+      setPreviewUrl(thumbnail.previewUrl);
+      setIsLoadingPreview(false);
+      return;
+    }
+
+    // Load preview from file
+    let cancelled = false;
+    setIsLoadingPreview(true);
+
+    loadPreviewForId(thumbnail.id).then((url) => {
+      if (!cancelled) {
+        setPreviewUrl(url);
+        setIsLoadingPreview(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbnail.id, thumbnail.previewUrl, previewCache, loadPreviewForId]);
 
   const handleClick = useCallback(() => {
     if (isProcessing) {
@@ -89,13 +129,24 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
           onClick={handleClick}
           onKeyDown={() => {}}
         >
-          <img
-            alt={thumbnail.name}
-            className="h-full w-full object-cover"
-            decoding="async"
-            loading="lazy"
-            src={thumbnail.dataUrl}
-          />
+          {/* Loading state */}
+          {isLoadingPreview ? (
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : previewUrl ? (
+            <img
+              alt={thumbnail.name}
+              className="h-full w-full object-cover"
+              decoding="async"
+              loading="lazy"
+              src={previewUrl}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <span className="text-muted-foreground text-sm">No preview</span>
+            </div>
+          )}
           {/* Selection checkbox overlay */}
           {isSelectionMode && (
             <div className="absolute top-2 left-2 z-20">

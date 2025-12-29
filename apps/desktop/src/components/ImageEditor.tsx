@@ -102,7 +102,15 @@ export function ImageEditor({
 
   // Track unsaved changes
   const hasUnsavedChanges = historyIndex !== savedHistoryIndex;
-  // Initialize - load from layerData if exists, otherwise from image
+
+  // File loading methods from gallery store
+  const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
+  const loadLayerDataForId = useGalleryStore((s) => s.loadLayerDataForId);
+
+  // Loading state for editor initialization
+  const [isLoadingEditor, setIsLoadingEditor] = useState(true);
+
+  // Initialize - load from files
   useEffect(() => {
     if (initializedRef.current) {
       return;
@@ -110,49 +118,83 @@ export function ImageEditor({
     initializedRef.current = true;
     reset();
     setSavedHistoryIndex(-1); // Reset saved state for new file
-    if (thumbnail.layerData) {
-      // Load existing project
+    setIsLoadingEditor(true);
+
+    const loadProject = async () => {
       try {
-        const savedLayers = JSON.parse(thumbnail.layerData);
-        for (const layer of savedLayers) {
-          useEditorStore.setState((state) => ({
-            layers: [...state.layers, layer],
-          }));
-        }
-        if (savedLayers.length > 0) {
+        // Try to load layer data first (existing project)
+        const savedLayers = await loadLayerDataForId(thumbnail.id);
+
+        if (savedLayers && savedLayers.length > 0) {
+          // Load existing project with layers
+          console.log(
+            "[ImageEditor] Loading project with",
+            savedLayers.length,
+            "layers"
+          );
+          for (const layer of savedLayers) {
+            useEditorStore.setState((state) => ({
+              layers: [...state.layers, layer as ImageLayer],
+            }));
+          }
           useEditorStore.setState({ activeLayerId: savedLayers[0].id });
+          setCanvasSize({
+            width: thumbnail.canvasWidth || 1280,
+            height: thumbnail.canvasHeight || 720,
+          });
+          setStoreCanvasSize(
+            thumbnail.canvasWidth || 1280,
+            thumbnail.canvasHeight || 720
+          );
+        } else {
+          // Load full image for new project
+          const fullImageUrl = await loadFullImageForId(thumbnail.id);
+          if (!fullImageUrl) {
+            console.error("[ImageEditor] Failed to load full image");
+            setIsLoadingEditor(false);
+            return;
+          }
+
+          // Create new project from image
+          const img = new window.Image();
+          img.onload = () => {
+            console.log(
+              "[ImageEditor] Image loaded:",
+              img.naturalWidth,
+              "x",
+              img.naturalHeight
+            );
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            addImageLayer(fullImageUrl, w, h);
+            setCanvasSize({ width: w, height: h });
+            setStoreCanvasSize(w, h);
+            setIsLoadingEditor(false);
+          };
+          img.onerror = () => {
+            console.error("[ImageEditor] Failed to load image");
+            setIsLoadingEditor(false);
+          };
+          img.src = fullImageUrl;
+          return; // Don't set loading false yet, wait for image load
         }
-        setCanvasSize({
-          width: thumbnail.canvasWidth || 1280,
-          height: thumbnail.canvasHeight || 720,
-        });
-        setStoreCanvasSize(
-          thumbnail.canvasWidth || 1280,
-          thumbnail.canvasHeight || 720
-        );
       } catch (error) {
-        console.error("Failed to load project data:", error);
+        console.error("[ImageEditor] Failed to load project:", error);
       }
-    } else {
-      // Create new project from image
-      const img = new window.Image();
-      img.onload = () => {
-        console.log(
-          "[ImageEditor] Image loaded:",
-          img.naturalWidth,
-          "x",
-          img.naturalHeight
-        );
-        // Use naturalWidth/Height to get actual pixel dimensions
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        addImageLayer(thumbnail.dataUrl, w, h);
-        setCanvasSize({ width: w, height: h });
-        setStoreCanvasSize(w, h);
-      };
-      img.src = thumbnail.dataUrl;
-    }
-  }, [thumbnail, addImageLayer, reset, setStoreCanvasSize]);
+      setIsLoadingEditor(false);
+    };
+
+    loadProject();
+  }, [
+    thumbnail.id,
+    thumbnail.canvasWidth,
+    thumbnail.canvasHeight,
+    addImageLayer,
+    reset,
+    setStoreCanvasSize,
+    loadFullImageForId,
+    loadLayerDataForId,
+  ]);
   // Calculate fit scale
   useEffect(() => {
     const container = containerRef.current;

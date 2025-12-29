@@ -1,9 +1,12 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import { X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ThumbnailItem } from "@/stores/use-gallery-store";
+import {
+  type ThumbnailItem,
+  useGalleryStore,
+} from "@/stores/use-gallery-store";
 
 interface ExportDialogProps {
   thumbnail: ThumbnailItem;
@@ -35,11 +38,50 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
   const [quality, setQuality] = useState(90);
   const [isExporting, setIsExporting] = useState(false);
 
-  const originalDimensions = useMemo(() => {
-    const img = new Image();
-    img.src = thumbnail.dataUrl;
-    return { width: img.width || 1920, height: img.height || 1080 };
-  }, [thumbnail.dataUrl]);
+  // Load full image from file storage
+  const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
+  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
+  const [originalDimensions, setOriginalDimensions] = useState({
+    width: 1920,
+    height: 1080,
+  });
+
+  // Load the full image on mount
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoadingImage(true);
+
+    loadFullImageForId(thumbnail.id).then((url) => {
+      if (cancelled || !url) {
+        setIsLoadingImage(false);
+        return;
+      }
+
+      // Get dimensions from the loaded image
+      const img = new Image();
+      img.onload = () => {
+        if (!cancelled) {
+          setFullImageUrl(url);
+          setOriginalDimensions({
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
+          setIsLoadingImage(false);
+        }
+      };
+      img.onerror = () => {
+        if (!cancelled) {
+          setIsLoadingImage(false);
+        }
+      };
+      img.src = url;
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbnail.id, loadFullImageForId]);
 
   const getFinalDimensions = useCallback(() => {
     if (resolution === "original") {
@@ -53,6 +95,10 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
   }, [resolution, customWidth, customHeight, originalDimensions]);
 
   const handleExport = useCallback(async () => {
+    if (!fullImageUrl) {
+      return;
+    }
+
     const formatInfo = FORMATS.find((f) => f.value === format)!;
     const dims = getFinalDimensions();
 
@@ -77,7 +123,7 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
       const img = new Image();
       await new Promise<void>((resolve) => {
         img.onload = () => resolve();
-        img.src = thumbnail.dataUrl;
+        img.src = fullImageUrl;
       });
 
       ctx.drawImage(img, 0, 0, dims.width, dims.height);
@@ -101,7 +147,7 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [format, getFinalDimensions, quality, thumbnail, onClose]);
+  }, [format, getFinalDimensions, quality, thumbnail, onClose, fullImageUrl]);
 
   return (
     <div
@@ -123,12 +169,20 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
 
         <div className="space-y-4 p-5">
           {/* Preview */}
-          <div className="aspect-video overflow-hidden rounded-lg bg-black">
-            <img
-              alt={thumbnail.name}
-              className="h-full w-full object-contain"
-              src={thumbnail.dataUrl}
-            />
+          <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-black">
+            {isLoadingImage ? (
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            ) : fullImageUrl ? (
+              <img
+                alt={thumbnail.name}
+                className="h-full w-full object-contain"
+                src={fullImageUrl}
+              />
+            ) : (
+              <span className="text-muted-foreground text-sm">
+                Failed to load image
+              </span>
+            )}
           </div>
 
           {/* Format */}
@@ -215,7 +269,10 @@ export function ExportDialog({ thumbnail, onClose }: ExportDialogProps) {
           <Button onClick={onClose} variant="ghost">
             Cancel
           </Button>
-          <Button disabled={isExporting} onClick={handleExport}>
+          <Button
+            disabled={isExporting || isLoadingImage || !fullImageUrl}
+            onClick={handleExport}
+          >
             {isExporting ? "Exporting..." : "Export"}
           </Button>
         </div>
