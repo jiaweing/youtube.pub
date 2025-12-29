@@ -127,9 +127,9 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
       trashItems: [...trashItems, ...state.trashItems],
     }));
 
+    // Chunk inserts
     try {
       const database = await getDb();
-      await database.execute("BEGIN TRANSACTION");
 
       // Chunk inserts
       const BATCH_SIZE = 50;
@@ -158,14 +158,21 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      await database.execute("COMMIT");
       console.log("[Trash] Batch move completed:", trashItems.length);
     } catch (error) {
       console.error("[Trash] Failed to batch move:", error);
-      try {
-        const database = await getDb();
-        await database.execute("ROLLBACK");
-      } catch {}
+
+      // Rollback files
+      console.log("[Trash] Rolling back file moves...");
+      await Promise.all(items.map((item) => restoreFilesFromTrash(item.id)));
+
+      // Rollback state
+      const idsToRemove = new Set(items.map((i) => i.id));
+      set((state) => ({
+        trashItems: state.trashItems.filter((t) => !idsToRemove.has(t.id)),
+      }));
+
+      throw error;
     }
   },
 
@@ -226,7 +233,6 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
 
     try {
       const database = await getDb();
-      await database.execute("BEGIN TRANSACTION");
 
       // Chunk deletes
       const BATCH_SIZE = 500;
@@ -239,14 +245,10 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      await database.execute("COMMIT");
       console.log("[Trash] Batch restore completed:", items.length);
     } catch (error) {
       console.error("[Trash] Failed to batch restore:", error);
-      try {
-        const database = await getDb();
-        await database.execute("ROLLBACK");
-      } catch {}
+      throw error;
     }
 
     return items;
@@ -299,7 +301,6 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
 
     try {
       const database = await getDb();
-      await database.execute("BEGIN TRANSACTION");
 
       // Chunk deletes
       const BATCH_SIZE = 500;
@@ -312,14 +313,10 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      await database.execute("COMMIT");
       console.log("[Trash] Batch permanent delete completed:", ids.length);
     } catch (error) {
       console.error("[Trash] Failed to batch delete permanently:", error);
-      try {
-        const database = await getDb();
-        await database.execute("ROLLBACK");
-      } catch {}
+      throw error;
     }
   },
 
