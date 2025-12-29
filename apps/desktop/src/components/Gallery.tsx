@@ -8,6 +8,7 @@ import {
   Loader2,
   MonitorPlay,
   Plus,
+  Search,
 } from "lucide-react";
 import {
   forwardRef,
@@ -31,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -70,7 +72,7 @@ const GridList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
       ref={ref}
       style={style}
       {...props}
-      className={cn("grid gap-4 p-4", className)}
+      className={cn("grid gap-4 px-4 pt-4 pb-4", className)}
     >
       {children}
     </div>
@@ -112,6 +114,9 @@ export function Gallery({
   const rawThumbnails = useGalleryStore((s) => s.thumbnails);
   const isLoaded = useGalleryStore((s) => s.isLoaded);
 
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Selection mode
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
   const selectAll = useSelectionStore((s) => s.selectAll);
@@ -123,7 +128,16 @@ export function Gallery({
   const setLastClickedIndex = useGalleryUIStore((s) => s.setLastClickedIndex);
 
   const thumbnails = useMemo(() => {
-    return [...rawThumbnails].sort((a, b) => {
+    let filtered = rawThumbnails;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((t) => t.name.toLowerCase().includes(query));
+    }
+
+    // Sort
+    return [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortField === "name") {
         cmp = a.name.localeCompare(b.name);
@@ -132,7 +146,7 @@ export function Gallery({
       }
       return sortOrder === "desc" ? -cmp : cmp;
     });
-  }, [rawThumbnails, sortField, sortOrder]);
+  }, [rawThumbnails, sortField, sortOrder, searchQuery]);
 
   // Get grid column class based on viewMode
   const gridColClass = useMemo(() => {
@@ -374,7 +388,7 @@ export function Gallery({
     );
   }
 
-  if (thumbnails.length === 0) {
+  if (rawThumbnails.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4">
         <GalleryThumbnails className="size-10 fill-muted-foreground text-muted-foreground opacity-40" />
@@ -393,73 +407,110 @@ export function Gallery({
   }
 
   return (
-    <div className="relative flex-1 select-none">
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            className="absolute inset-0 overflow-hidden"
-            onMouseDown={handleMouseDown}
-            ref={containerRef}
+    <div className="relative flex flex-1 select-none flex-col">
+      {/* Search Bar */}
+      <div className="relative z-10 p-4">
+        <div className="relative">
+          <Search className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-14 pr-20 pl-12 text-xl"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search"
+            type="text"
+            value={searchQuery}
+          />
+          <Badge
+            className="absolute top-1/2 right-3 -translate-y-1/2"
+            variant="secondary"
           >
-            {selectionBox && (
-              <div
-                className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
-                style={{
-                  left: selectionBox.x,
-                  top: selectionBox.y,
-                  width: selectionBox.width,
-                  height: selectionBox.height,
-                }}
-              />
-            )}
-            <VirtuosoGrid
-              components={gridComponents}
-              initialTopMostItemIndex={lastClickedIndex ?? 0}
-              itemContent={itemContent}
-              listClassName={gridColClass}
-              overscan={600}
-              scrollerRef={(ref) => {
-                scrollerRef.current = ref as HTMLDivElement;
-              }}
-              style={{ height: "100%", width: "100%" }}
-              totalCount={thumbnails.length + 1} // +1 for add button
-            />
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={handleAddImage}>
-            <ImagePlus className="mr-2 size-4" />
-            Upload Photo
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => setShowVideoExtractor(true)}>
-            <MonitorPlay className="mr-2 size-4" />
-            Upload Video
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            onClick={() => {
-              toggleSelectionMode();
-              selectAll(thumbnails.map((t) => t.id));
-            }}
-          >
-            <CheckSquare className="mr-2 size-4" />
-            Select All
-          </ContextMenuItem>
-          <ContextMenuItem
-            onClick={() => {
-              if (isSelectionMode) {
-                exitSelectionMode();
-              } else {
-                toggleSelectionMode();
-              }
-            }}
-          >
-            <Grid2X2 className="mr-2 size-4" />
-            {isSelectionMode ? "Exit Selection Mode" : "Enter Selection Mode"}
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+            {thumbnails.length}
+          </Badge>
+        </div>
+      </div>
 
+      {/* Gallery Grid */}
+      <div className="relative flex-1">
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              className="absolute inset-0 overflow-hidden"
+              onMouseDown={handleMouseDown}
+              ref={containerRef}
+            >
+              {selectionBox && (
+                <div
+                  className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
+                  style={{
+                    left: selectionBox.x,
+                    top: selectionBox.y,
+                    width: selectionBox.width,
+                    height: selectionBox.height,
+                  }}
+                />
+              )}
+              {thumbnails.length === 0 && searchQuery.trim() ? (
+                <div className="flex h-full flex-col items-center justify-center gap-4">
+                  <Search className="size-10 text-muted-foreground opacity-40" />
+                  <div className="text-center">
+                    <p className="font-medium">No results found</p>
+                    <p className="mt-1 text-muted-foreground text-sm">
+                      Try a different search term
+                    </p>
+                  </div>
+                  <Button onClick={() => setSearchQuery("")} variant="ghost">
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <VirtuosoGrid
+                  components={gridComponents}
+                  initialTopMostItemIndex={lastClickedIndex ?? 0}
+                  itemContent={itemContent}
+                  listClassName={gridColClass}
+                  overscan={600}
+                  scrollerRef={(ref) => {
+                    scrollerRef.current = ref as HTMLDivElement;
+                  }}
+                  style={{ height: "100%", width: "100%" }}
+                  totalCount={thumbnails.length + 1} // +1 for add button
+                />
+              )}
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={handleAddImage}>
+              <ImagePlus className="mr-2 size-4" />
+              Upload Photo
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => setShowVideoExtractor(true)}>
+              <MonitorPlay className="mr-2 size-4" />
+              Upload Video
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => {
+                toggleSelectionMode();
+                selectAll(thumbnails.map((t) => t.id));
+              }}
+            >
+              <CheckSquare className="mr-2 size-4" />
+              Select All
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                if (isSelectionMode) {
+                  exitSelectionMode();
+                } else {
+                  toggleSelectionMode();
+                }
+              }}
+            >
+              <Grid2X2 className="mr-2 size-4" />
+              {isSelectionMode ? "Exit Selection Mode" : "Enter Selection Mode"}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </div>
       {showVideoExtractor && (
         <VideoExtractor onClose={() => setShowVideoExtractor(false)} />
       )}
@@ -505,10 +556,10 @@ export function Gallery({
       <AlertDialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Thumbnail?</AlertDialogTitle>
+            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedThumbnail?.name}"? This
-              action cannot be undone.
+              "{selectedThumbnail?.name}" will be moved to trash. You can
+              restore it within 30 days.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -517,7 +568,7 @@ export function Gallery({
               onClick={async () => {
                 if (selectedThumbnail) {
                   await deleteThumbnail(selectedThumbnail.id);
-                  toast.info("Thumbnail deleted");
+                  toast.info("Moved to trash");
                   setDeleteDialogOpen(false);
                 }
               }}

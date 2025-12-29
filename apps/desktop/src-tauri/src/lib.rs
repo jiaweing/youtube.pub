@@ -1,6 +1,10 @@
 use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
 
+// Declare modules
+pub mod secure_storage;
+pub mod security;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -19,8 +23,25 @@ pub fn run() {
                 main_window.set_traffic_lights_inset(12.0, 16.0).unwrap();
             }
 
+            // Initialize Secure Storage
+            let app_data_dir = app.path().app_data_dir().unwrap();
+            let app_name = app.package_info().name.clone();
+            
+            secure_storage::init_secure_storage(&app_name, &app_data_dir)
+                .expect("Failed to initialize secure storage");
+
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            secure_storage::secure_storage_store,
+            secure_storage::secure_storage_retrieve,
+            secure_storage::secure_storage_remove_encrypted,
+            secure_storage::secure_storage_exists,
+            secure_storage::secure_storage_store_batch,
+            secure_storage::secure_storage_retrieve_batch,
+            secure_storage::secure_storage_list_keys,
+            secure_storage::secure_storage_clear_all
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

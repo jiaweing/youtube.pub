@@ -22,3 +22,10 @@ tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Secure Storage Dependencies
+aes-gcm = "0.10"
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+once_cell = "1.19"

@@ -31,6 +31,7 @@
         "@tauri-apps/plugin-opener": "^2.5.2",
         "@tauri-apps/plugin-sql": "^2.3.1",
         "@tauri-apps/plugin-store": "^2.4.1",
+        "@tauri-apps/plugin-stronghold": "^2.3.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
@@ -1176,6 +1177,8 @@
     "@tauri-apps/plugin-sql": ["@tauri-apps/plugin-sql@2.3.1", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-iNgHnFIR+jRkx9INKVKepzMlxXtNkJUaWuhagFjT4dOttPaNyRnVHgwTjpqZhyVjiklDh2UdEPAJkQKiCPAekw=="],
 
     "@tauri-apps/plugin-store": ["@tauri-apps/plugin-store@2.4.1", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-ckGSEzZ5Ii4Hf2D5x25Oqnm2Zf9MfDWAzR+volY0z/OOBz6aucPKEY0F649JvQ0Vupku6UJo7ugpGRDOFOunkA=="],
+
+    "@tauri-apps/plugin-stronghold": ["@tauri-apps/plugin-stronghold@2.3.1", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-zFbD1Apk/VFdWaoGaoKcouRrZnzLFiNY9b1KDeBaN47sMaMHRYIa+ZDhvbzMOyH314+OHCQBXfe8I/ph59Lp9g=="],
 
     "@trpc/server": ["@trpc/server@11.8.1", "", { "peerDependencies": { "typescript": ">=5.7.2" } }, "sha512-P4rzZRpEL7zDFgjxK65IdyH0e41FMFfTkQkuq0BA5tKcr7E6v9/v38DEklCpoDN6sPiB1Sigy/PUEzHENhswDA=="],
 

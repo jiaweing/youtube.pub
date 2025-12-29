@@ -4,6 +4,7 @@ import {
   Copy,
   Link2,
   Link2Off,
+  Loader2,
   Minus,
   Plus,
   Save,
@@ -69,6 +70,7 @@ export function ImageEditor({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [savedHistoryIndex, setSavedHistoryIndex] = useState(-1);
@@ -169,6 +171,8 @@ export function ImageEditor({
             addImageLayer(fullImageUrl, w, h);
             setCanvasSize({ width: w, height: h });
             setStoreCanvasSize(w, h);
+            // Sync savedHistoryIndex after layer is added to prevent false "unsaved changes"
+            setSavedHistoryIndex(useEditorStore.getState().historyIndex);
             setIsLoadingEditor(false);
           };
           img.onerror = () => {
@@ -251,6 +255,7 @@ export function ImageEditor({
       return;
     }
     setIsProcessing(true);
+    const toastId = toast.loading("Removing background...");
     try {
       const { removeBackgroundAsync } = await import(
         "@/lib/background-removal"
@@ -259,17 +264,20 @@ export function ImageEditor({
       const img = new window.Image();
       img.onload = () => addImageLayer(resultDataUrl, img.width, img.height);
       img.src = resultDataUrl;
+      toast.success("Background removed", { id: toastId });
     } catch (error) {
       console.error("Background removal failed:", error);
+      toast.error("Failed to remove background", { id: toastId });
     } finally {
       setIsProcessing(false);
     }
   }, [activeLayerId, layers, addImageLayer]);
   const handleSave = useCallback(async () => {
-    if (!exportRef.current) {
+    if (!exportRef.current || isSaving) {
       return;
     }
     setShowSaveMenu(false);
+    setIsSaving(true);
     try {
       const previewDataUrl = exportRef.current();
       await saveProject(
@@ -285,8 +293,10 @@ export function ImageEditor({
     } catch (error) {
       console.error("Save failed:", error);
       toast.error("Failed to save");
+    } finally {
+      setIsSaving(false);
     }
-  }, [saveProject, projectId, projectName, layers, canvasSize]);
+  }, [saveProject, projectId, projectName, layers, canvasSize, isSaving]);
   const handleSaveAsNew = useCallback(async () => {
     if (!exportRef.current) {
       return;
@@ -434,9 +444,7 @@ export function ImageEditor({
                 onClick={() => setShowCanvasSizeDialog(true)}
                 type="button"
               >
-                {isProcessing
-                  ? "Processing..."
-                  : `${canvasSize.width} × ${canvasSize.height}`}
+                {`${canvasSize.width} × ${canvasSize.height}`}
               </TooltipTrigger>
               <TooltipContent>Change Canvas Size</TooltipContent>
             </Tooltip>
@@ -591,17 +599,27 @@ export function ImageEditor({
               <div className="relative">
                 <Button
                   className="gap-2"
+                  disabled={isSaving}
                   onClick={() => setShowSaveMenu(!showSaveMenu)}
                   size="sm"
                 >
-                  {hasUnsavedChanges && (
-                    <span className="relative flex size-3">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                      <span className="relative inline-flex size-3 rounded-full bg-orange-500" />
-                    </span>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      {hasUnsavedChanges && (
+                        <span className="relative flex size-3">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                          <span className="relative inline-flex size-3 rounded-full bg-orange-500" />
+                        </span>
+                      )}
+                      Save
+                      <ChevronDown className="size-3" />
+                    </>
                   )}
-                  Save
-                  <ChevronDown className="size-3" />
                 </Button>
                 {showSaveMenu && (
                   <>

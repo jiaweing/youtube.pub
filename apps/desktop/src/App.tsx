@@ -6,13 +6,14 @@ import { Gallery } from "@/components/Gallery";
 import { GeminiImagePage } from "@/components/GeminiImagePage";
 import { ImageEditor } from "@/components/ImageEditor";
 import { TitleBar } from "@/components/TitleBar";
+import { TrashPage } from "@/components/TrashPage";
 import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
 import { useEditorStore } from "@/stores/use-editor-store";
 import type { ThumbnailItem } from "@/stores/use-gallery-store";
 
 export type ViewMode = "3" | "4" | "5" | "row";
-type Page = "gallery" | "editor" | "ai-generate";
+type Page = "gallery" | "editor" | "ai-generate" | "trash";
 
 export default function App() {
   const [page, setPage] = useState<Page>("gallery");
@@ -95,6 +96,16 @@ export default function App() {
     );
   }
 
+  // Trash page
+  if (page === "trash") {
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        <TrashPage onClose={() => setPage("gallery")} />
+        <Toaster />
+      </div>
+    );
+  }
+
   // Gallery page (default)
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -106,6 +117,7 @@ export default function App() {
       />
       <BottomToolbar
         onAddVideoClick={() => setShowExtractor(true)}
+        onTrashClick={() => setPage("trash")}
         onViewModeChange={setViewMode}
         viewMode={viewMode}
       />

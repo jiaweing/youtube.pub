@@ -1,31 +1,54 @@
-import { load } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 
-const STORE_NAME = "gemini-settings.json";
-const API_KEY_KEY = "gemini_api_key";
-
-async function getStore() {
-  return load(STORE_NAME, { autoSave: true });
-}
+const GEMINI_API_KEY_KEY = "gemini_api_key";
 
 export async function getGeminiApiKey(): Promise<string | null> {
-  const store = await getStore();
-  const key = await store.get<string>(API_KEY_KEY);
-  return key ?? null;
+  try {
+    const key = await invoke<string | null>("secure_storage_retrieve", {
+      key: GEMINI_API_KEY_KEY,
+    });
+    return key;
+  } catch (error) {
+    console.error("Failed to load Gemini API key:", error);
+    return null;
+  }
 }
 
-export async function setGeminiApiKey(key: string): Promise<void> {
-  const store = await getStore();
-  await store.set(API_KEY_KEY, key);
-  await store.save();
+export async function setGeminiApiKey(apiKey: string): Promise<void> {
+  try {
+    if (!apiKey) {
+      await removeGeminiApiKey();
+      return;
+    }
+
+    await invoke("secure_storage_store", {
+      key: GEMINI_API_KEY_KEY,
+      value: apiKey,
+    });
+  } catch (error) {
+    console.error("Failed to save Gemini API key:", error);
+    throw error;
+  }
 }
 
 export async function removeGeminiApiKey(): Promise<void> {
-  const store = await getStore();
-  await store.delete(API_KEY_KEY);
-  await store.save();
+  try {
+    await invoke("secure_storage_remove_encrypted", {
+      key: GEMINI_API_KEY_KEY,
+    });
+  } catch (error) {
+    console.error("Failed to remove Gemini API key:", error);
+    throw error;
+  }
 }
 
 export async function hasGeminiApiKey(): Promise<boolean> {
-  const key = await getGeminiApiKey();
-  return key !== null && key.length > 0;
+  try {
+    return await invoke("secure_storage_exists", {
+      key: GEMINI_API_KEY_KEY,
+    });
+  } catch (error) {
+    console.error("Failed to check Gemini API key:", error);
+    return false;
+  }
 }

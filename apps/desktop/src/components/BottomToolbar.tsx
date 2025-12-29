@@ -12,6 +12,7 @@ import {
   Image,
   Key,
   List,
+  Loader2,
   Plus,
   Trash2,
   Video,
@@ -36,11 +37,13 @@ import { Button } from "@/components/ui/button";
 import { useBackgroundRemovalQueue } from "@/stores/use-background-removal-queue";
 import { type SortField, useGalleryStore } from "@/stores/use-gallery-store";
 import { useSelectionStore } from "@/stores/use-selection-store";
+import { useTrashStore } from "@/stores/use-trash-store";
 
 interface HeaderProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onAddVideoClick: () => void;
+  onTrashClick: () => void;
 }
 
 const viewModeIcons: Record<ViewMode, React.ReactNode> = {
@@ -79,6 +82,7 @@ export function BottomToolbar({
   viewMode,
   onViewModeChange,
   onAddVideoClick,
+  onTrashClick,
 }: HeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -103,21 +107,38 @@ export function BottomToolbar({
 
   const addToQueue = useBackgroundRemovalQueue((s) => s.addToQueue);
 
+  // Trash
+  const trashItems = useTrashStore((s) => s.trashItems);
+  const trashCount = trashItems.length;
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const handleBulkDuplicate = useCallback(async () => {
-    const ids = Array.from(selectedIds);
-    await duplicateThumbnailsBatch(ids);
-    toast.success(`Duplicated ${ids.length} items`);
-    clearSelection();
-  }, [selectedIds, duplicateThumbnailsBatch, clearSelection]);
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await duplicateThumbnailsBatch(ids);
+      toast.success(`Duplicated ${ids.length} items`);
+      clearSelection();
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [selectedIds, duplicateThumbnailsBatch, clearSelection, isDuplicating]);
 
   const handleBulkDelete = async () => {
-    const ids = Array.from(selectedIds);
-    await deleteThumbnailsBatch(ids);
-    toast.success(`Deleted ${ids.length} items`);
-    setDeleteDialogOpen(false);
-    clearSelection();
+    setIsDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await deleteThumbnailsBatch(ids);
+      toast.success(`Moved ${ids.length} items to trash`);
+      setDeleteDialogOpen(false);
+      clearSelection();
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleBulkRemoveBackground = useCallback(() => {
@@ -242,7 +263,7 @@ export function BottomToolbar({
   }, [onAddVideoClick]);
 
   return (
-    <header className="flex h-12 items-center justify-between bg-background px-4">
+    <header className="flex h-12 items-center justify-between bg-background/50 px-4 backdrop-blur-sm">
       {isSelectionMode && selectedIds.size > 0 ? (
         <div className="flex flex-1 items-center justify-center gap-4">
           <div className="flex items-center gap-2">
@@ -259,9 +280,18 @@ export function BottomToolbar({
             </span>
           </div>
           <div className="h-4 w-px bg-border" />
-          <Button onClick={handleBulkDuplicate} size="sm" variant="ghost">
-            <Copy className="mr-2 size-4" />
-            Duplicate
+          <Button
+            disabled={isDuplicating}
+            onClick={handleBulkDuplicate}
+            size="sm"
+            variant="ghost"
+          >
+            {isDuplicating ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Copy className="mr-2 size-4" />
+            )}
+            {isDuplicating ? "Duplicating..." : "Duplicate"}
           </Button>
           <Button
             className="text-destructive hover:text-destructive"
@@ -369,6 +399,25 @@ export function BottomToolbar({
 
       {/* Right side buttons */}
       <div className="flex items-center gap-2">
+        {/* Trash button - Left of Select */}
+        {(!isSelectionMode || selectedIds.size === 0) && (
+          <Button
+            aria-label="Trash"
+            className="relative"
+            onClick={onTrashClick}
+            size="icon-sm"
+            title="Trash"
+            variant="ghost"
+          >
+            <Trash2 className="size-4" />
+            {trashCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-medium text-[10px] text-primary-foreground">
+                {trashCount > 99 ? "99+" : trashCount}
+              </span>
+            )}
+          </Button>
+        )}
+
         <Button
           onClick={toggleSelectionMode}
           size="sm"
@@ -434,23 +483,35 @@ export function BottomToolbar({
       </div>
 
       <AlertDialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onEscapeKeyDown={(e) => {
+            if (isDeleting) e.preventDefault();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {selectedIds.size} items?
+              Move {selectedIds.size} items to trash?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              selected thumbnails.
+              These items will be moved to trash. You can restore them within 30
+              days.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
               onClick={handleBulkDelete}
             >
-              Delete
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Moving...
+                </>
+              ) : (
+                "Move to Trash"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

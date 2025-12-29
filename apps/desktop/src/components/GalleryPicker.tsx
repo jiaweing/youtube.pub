@@ -22,10 +22,10 @@ function PickerThumbnail({
 }) {
   const loadPreviewForId = useGalleryStore((s) => s.loadPreviewForId);
   const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
-  const previewCache = useGalleryStore((s) => s.previewCache);
+  const cachedPreviewUrl = useGalleryStore((s) => s.previewCache.get(id));
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(
-    initialPreviewUrl || previewCache.get(id) || null
+    initialPreviewUrl || cachedPreviewUrl || null
   );
   const [isLoading, setIsLoading] = useState(!previewUrl);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -33,6 +33,12 @@ function PickerThumbnail({
   // Load preview on mount
   useEffect(() => {
     if (previewUrl) {
+      setIsLoading(false);
+      return;
+    }
+
+    if (cachedPreviewUrl) {
+      setPreviewUrl(cachedPreviewUrl);
       setIsLoading(false);
       return;
     }
@@ -50,7 +56,7 @@ function PickerThumbnail({
     return () => {
       cancelled = true;
     };
-  }, [id, previewUrl, loadPreviewForId]);
+  }, [id, previewUrl, cachedPreviewUrl, loadPreviewForId]);
 
   const handleClick = useCallback(async () => {
     setIsSelecting(true);

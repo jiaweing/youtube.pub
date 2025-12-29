@@ -59,19 +59,22 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
   const toggleSelection = useSelectionStore((s) => s.toggleSelection);
   const duplicateThumbnail = useGalleryStore((s) => s.duplicateThumbnail);
   const loadPreviewForId = useGalleryStore((s) => s.loadPreviewForId);
-  const previewCache = useGalleryStore((s) => s.previewCache);
+  // Optimization: Only re-render when the specific preview URL for this thumbnail changes
+  const cachedPreviewUrl = useGalleryStore((s) =>
+    s.previewCache.get(thumbnail.id)
+  );
 
   // Get preview URL from cache or thumbnail
   const [previewUrl, setPreviewUrl] = useState<string | null>(
-    thumbnail.previewUrl || previewCache.get(thumbnail.id) || null
+    thumbnail.previewUrl || cachedPreviewUrl || null
   );
   const [isLoadingPreview, setIsLoadingPreview] = useState(!previewUrl);
 
   // Load preview on mount if not cached
   useEffect(() => {
-    const cached = previewCache.get(thumbnail.id);
-    if (cached) {
-      setPreviewUrl(cached);
+    // If we have a cached URL, use it
+    if (cachedPreviewUrl) {
+      setPreviewUrl(cachedPreviewUrl);
       setIsLoadingPreview(false);
       return;
     }
@@ -96,7 +99,7 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
     return () => {
       cancelled = true;
     };
-  }, [thumbnail.id, thumbnail.previewUrl, previewCache, loadPreviewForId]);
+  }, [thumbnail.id, thumbnail.previewUrl, cachedPreviewUrl, loadPreviewForId]);
 
   const handleClick = useCallback(() => {
     if (isProcessing) {

@@ -4,6 +4,7 @@ import {
   mkdir,
   readFile,
   remove,
+  rename,
   writeFile,
 } from "@tauri-apps/plugin-fs";
 
@@ -233,5 +234,119 @@ export async function thumbnailFilesExist(id: string): Promise<boolean> {
     return await exists(fullPath);
   } catch {
     return false;
+  }
+}
+
+// ============ TRASH FUNCTIONS ============
+
+const TRASH_DIR = "trash";
+
+/**
+ * Get the base trash directory path
+ */
+async function getTrashBaseDir(): Promise<string> {
+  const appData = await appDataDir();
+  return await join(appData, TRASH_DIR);
+}
+
+/**
+ * Get the directory path for a specific trashed thumbnail
+ */
+async function getTrashDir(id: string): Promise<string> {
+  const baseDir = await getTrashBaseDir();
+  return await join(baseDir, id);
+}
+
+/**
+ * Move thumbnail files to trash (fast directory rename)
+ */
+export async function moveFilesToTrash(id: string): Promise<void> {
+  try {
+    const thumbDir = await getThumbDir(id);
+    const trashDir = await getTrashDir(id);
+
+    if (!(await exists(thumbDir))) {
+      console.warn(`[ThumbnailStorage] Source dir not found for ${id}`);
+      return;
+    }
+
+    // Ensure parent trash directory exists
+    const trashBaseDir = await getTrashBaseDir();
+    await ensureDir(trashBaseDir);
+
+    // Use rename for instant move (no read/write needed)
+    await rename(thumbDir, trashDir);
+    console.log(`[ThumbnailStorage] Moved ${id} to trash`);
+  } catch (error) {
+    console.error(`[ThumbnailStorage] Failed to move ${id} to trash:`, error);
+  }
+}
+
+/**
+ * Restore thumbnail files from trash (fast directory rename)
+ */
+export async function restoreFilesFromTrash(id: string): Promise<void> {
+  try {
+    const trashDir = await getTrashDir(id);
+    const thumbDir = await getThumbDir(id);
+
+    if (!(await exists(trashDir))) {
+      console.warn(`[ThumbnailStorage] Trash dir not found for ${id}`);
+      return;
+    }
+
+    // Ensure parent thumbnails directory exists
+    const thumbBaseDir = await getThumbnailsBaseDir();
+    await ensureDir(thumbBaseDir);
+
+    // Use rename for instant move
+    await rename(trashDir, thumbDir);
+    console.log(`[ThumbnailStorage] Restored ${id} from trash`);
+  } catch (error) {
+    console.error(
+      `[ThumbnailStorage] Failed to restore ${id} from trash:`,
+      error
+    );
+  }
+}
+
+/**
+ * Permanently delete files from trash
+ */
+export async function deleteFromTrash(id: string): Promise<void> {
+  try {
+    const trashDir = await getTrashDir(id);
+    if (await exists(trashDir)) {
+      await remove(trashDir, { recursive: true });
+      console.log(`[ThumbnailStorage] Permanently deleted ${id} from trash`);
+    }
+  } catch (error) {
+    console.error(
+      `[ThumbnailStorage] Failed to delete ${id} from trash:`,
+      error
+    );
+  }
+}
+
+/**
+ * Load preview from trash
+ */
+export async function loadTrashPreview(id: string): Promise<string | null> {
+  try {
+    const trashDir = await getTrashDir(id);
+    const previewPath = await join(trashDir, "preview.webp");
+
+    if (!(await exists(previewPath))) {
+      return null;
+    }
+
+    const bytes = await readFile(previewPath);
+    return bytesToDataUrl(bytes, "image/webp");
+  } catch (error) {
+    console.error(
+      `[ThumbnailStorage] Failed to load trash preview for ${id}:`,
+      error
+    );
+    return null;
   }
 }

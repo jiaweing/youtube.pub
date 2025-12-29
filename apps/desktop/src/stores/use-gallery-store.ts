@@ -1,13 +1,13 @@
-import Database from "@tauri-apps/plugin-sql";
 import { create } from "zustand";
+import { getDb } from "@/lib/db";
 import {
-  deleteThumbnailFiles,
   loadFullImage,
   loadLayerData,
   loadPreview,
   saveLayerData,
   saveThumbnail,
 } from "@/lib/thumbnail-storage";
+import { useTrashStore } from "@/stores/use-trash-store";
 
 // ThumbnailItem no longer stores dataUrl - images are loaded on demand
 export interface ThumbnailItem {
@@ -72,47 +72,20 @@ interface GalleryState {
   updateThumbnailName: (id: string, name: string) => Promise<void>;
   updateThumbnail: (id: string, dataUrl: string) => Promise<void>;
   deleteThumbnail: (id: string) => Promise<void>;
+  restoreThumbnail: (trashItem: {
+    id: string;
+    name: string;
+    originalCreatedAt: number;
+    originalUpdatedAt: number;
+    canvasWidth?: number;
+    canvasHeight?: number;
+  }) => Promise<void>;
   loadFromDb: () => Promise<void>;
 
   // Lazy loading
   loadPreviewForId: (id: string) => Promise<string | null>;
   loadFullImageForId: (id: string) => Promise<string | null>;
   loadLayerDataForId: (id: string) => Promise<Layer[] | null>;
-}
-
-let db: Database | null = null;
-let dbInitPromise: Promise<Database> | null = null;
-
-async function initDb(): Promise<Database> {
-  console.log("[Gallery] Initializing database...");
-  const database = await Database.load("sqlite:gallery.db");
-  console.log("[Gallery] Database loaded, creating tables...");
-
-  // New schema - NO dataUrl or layerData columns (stored as files)
-  await database.execute(`
-    CREATE TABLE IF NOT EXISTS thumbnails (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      createdAt INTEGER NOT NULL,
-      updatedAt INTEGER NOT NULL DEFAULT 0,
-      canvasWidth INTEGER,
-      canvasHeight INTEGER
-    )
-  `);
-
-  console.log("[Gallery] Tables created/verified");
-  return database;
-}
-
-async function getDb(): Promise<Database> {
-  if (db) {
-    return db;
-  }
-  if (!dbInitPromise) {
-    dbInitPromise = initDb();
-  }
-  db = await dbInitPromise;
-  return db;
 }
 
 export const useGalleryStore = create<GalleryState>()((set, get) => ({
@@ -129,7 +102,15 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
   addThumbnail: async (dataUrl, name) => {
     const now = Date.now();
     const id = crypto.randomUUID();
-    const itemName = name || `Thumbnail ${get().thumbnails.length + 1}`;
+    const itemName =
+      name ||
+      `;
+Thumbnail;
+$;
+{
+  get().thumbnails.length + 1;
+}
+`;
 
     console.log("[Gallery] Adding thumbnail:", itemName);
 
@@ -192,7 +173,12 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
 
     const newItem: ThumbnailItem = {
       id: newId,
-      name: `${original.name} (Copy)`,
+      name: `;
+$;
+{
+  original.name;
+}
+Copy`,
       createdAt: now,
       updatedAt: now,
       canvasWidth: original.canvasWidth,
@@ -238,15 +224,13 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
     console.log("[Gallery] Batch duplicating", originals.length, "thumbnails");
 
     const now = Date.now();
-    const newItems: ThumbnailItem[] = [];
     const newPreviews = new Map<string, string>();
 
-    // Process each original
-    for (let i = 0; i < originals.length; i++) {
-      const original = originals[i];
+    // Process each original in parallel
+    const promises = originals.map(async (original, i) => {
       const fullImage = await loadFullImage(original.id);
       if (!fullImage) {
-        continue;
+        return null;
       }
 
       const newId = crypto.randomUUID();
@@ -258,7 +242,9 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
         await saveLayerData(newId, layers);
       }
 
-      newItems.push({
+      newPreviews.set(newId, previewUrl);
+
+      return {
         id: newId,
         name: `${original.name} (Copy)`,
         createdAt: now + i,
@@ -266,9 +252,13 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
         canvasWidth: original.canvasWidth,
         canvasHeight: original.canvasHeight,
         previewUrl,
-      });
-      newPreviews.set(newId, previewUrl);
-    }
+      };
+    });
+
+    const results = await Promise.all(promises);
+    const newItems = results.filter(
+      (item): item is ThumbnailItem => item !== null
+    );
 
     // Single state update
     set((state) => ({
@@ -280,19 +270,34 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
     try {
       const database = await getDb();
       await database.execute("BEGIN TRANSACTION");
-      for (const item of newItems) {
+
+      // Chunk inserts to avoid SQLite parameter limits (safe limit ~900 params)
+      // 6 params per item implies max 150 items per chunk. Using 50 for safety.
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < newItems.length; i += BATCH_SIZE) {
+        const chunk = newItems.slice(i, i + BATCH_SIZE);
+        const placeholders = chunk
+          .map(
+            (_, idx) =>
+              `($${idx * 6 + 1}, $${idx * 6 + 2}, $${idx * 6 + 3}, $${idx * 6 + 4}, $${idx * 6 + 5}, $${idx * 6 + 6})`
+          )
+          .join(", ");
+
+        const values = chunk.flatMap((item) => [
+          item.id,
+          item.name,
+          item.createdAt,
+          item.updatedAt,
+          item.canvasWidth || null,
+          item.canvasHeight || null,
+        ]);
+
         await database.execute(
-          "INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight) VALUES ($1, $2, $3, $4, $5, $6)",
-          [
-            item.id,
-            item.name,
-            item.createdAt,
-            item.updatedAt,
-            item.canvasWidth || null,
-            item.canvasHeight || null,
-          ]
+          `INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight) VALUES ${placeholders}`,
+          values
         );
       }
+
       await database.execute("COMMIT");
       console.log("[Gallery] Batch duplicates saved:", newItems.length);
     } catch (error) {
@@ -437,6 +442,22 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
   },
 
   deleteThumbnail: async (id) => {
+    const thumbnail = get().thumbnails.find((t) => t.id === id);
+    if (!thumbnail) {
+      return;
+    }
+
+    // Move to trash
+    await useTrashStore.getState().moveToTrash({
+      id: thumbnail.id,
+      name: thumbnail.name,
+      createdAt: thumbnail.createdAt,
+      updatedAt: thumbnail.updatedAt,
+      canvasWidth: thumbnail.canvasWidth,
+      canvasHeight: thumbnail.canvasHeight,
+    });
+
+    // Remove from gallery state
     set((state) => {
       const newCache = new Map(state.previewCache);
       newCache.delete(id);
@@ -445,9 +466,6 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
         previewCache: newCache,
       };
     });
-
-    // Delete files
-    await deleteThumbnailFiles(id);
 
     try {
       const database = await getDb();
@@ -464,8 +482,26 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
     }
 
     const idsSet = new Set(ids);
-    console.log("[Gallery] Batch deleting", ids.length, "thumbnails");
+    const thumbnailsToTrash = get().thumbnails.filter((t) => idsSet.has(t.id));
+    console.log(
+      "[Gallery] Moving",
+      thumbnailsToTrash.length,
+      "thumbnails to trash"
+    );
 
+    // Move to trash
+    await useTrashStore.getState().moveToTrashBatch(
+      thumbnailsToTrash.map((t) => ({
+        id: t.id,
+        name: t.name,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        canvasWidth: t.canvasWidth,
+        canvasHeight: t.canvasHeight,
+      }))
+    );
+
+    // Remove from gallery state
     set((state) => {
       const newCache = new Map(state.previewCache);
       for (const id of ids) {
@@ -477,25 +513,65 @@ export const useGalleryStore = create<GalleryState>()((set, get) => ({
       };
     });
 
-    // Delete all files
-    for (const id of ids) {
-      await deleteThumbnailFiles(id);
-    }
-
     try {
       const database = await getDb();
       await database.execute("BEGIN TRANSACTION");
-      for (const id of ids) {
-        await database.execute("DELETE FROM thumbnails WHERE id = $1", [id]);
+
+      // Chunk deletes
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const chunk = ids.slice(i, i + BATCH_SIZE);
+        const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(", ");
+        await database.execute(
+          `DELETE FROM thumbnails WHERE id IN (${placeholders})`,
+          chunk
+        );
       }
+
       await database.execute("COMMIT");
-      console.log("[Gallery] Batch delete completed:", ids.length);
+      console.log("[Gallery] Batch move to trash completed:", ids.length);
     } catch (error) {
       console.error("[Gallery] Failed to batch delete:", error);
       try {
         const database = await getDb();
         await database.execute("ROLLBACK");
       } catch {}
+      set({ dbError: String(error) });
+    }
+  },
+
+  restoreThumbnail: async (trashItem) => {
+    console.log("[Gallery] Restoring from trash:", trashItem.name);
+
+    const restoredItem: ThumbnailItem = {
+      id: trashItem.id,
+      name: trashItem.name,
+      createdAt: trashItem.originalCreatedAt,
+      updatedAt: trashItem.originalUpdatedAt,
+      canvasWidth: trashItem.canvasWidth,
+      canvasHeight: trashItem.canvasHeight,
+    };
+
+    set((state) => ({
+      thumbnails: [restoredItem, ...state.thumbnails],
+    }));
+
+    try {
+      const database = await getDb();
+      await database.execute(
+        "INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight) VALUES ($1, $2, $3, $4, $5, $6)",
+        [
+          restoredItem.id,
+          restoredItem.name,
+          restoredItem.createdAt,
+          restoredItem.updatedAt,
+          restoredItem.canvasWidth || null,
+          restoredItem.canvasHeight || null,
+        ]
+      );
+      console.log("[Gallery] Thumbnail restored:", restoredItem.id);
+    } catch (error) {
+      console.error("[Gallery] Failed to restore thumbnail:", error);
       set({ dbError: String(error) });
     }
   },
