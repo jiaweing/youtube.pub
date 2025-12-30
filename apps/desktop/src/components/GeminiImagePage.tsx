@@ -557,7 +557,7 @@ export function GeminiImagePage({
             <div className="flex shrink-0 items-center justify-end gap-2 bg-background px-4 py-3">
               {/* Save Selected dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger>
                   <Button disabled={!hasSelection} size="sm" variant="ghost">
                     Save Selected ({selectedIndices.size})
                   </Button>
@@ -576,7 +576,7 @@ export function GeminiImagePage({
 
               {/* Save All dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger>
                   <Button size="sm">Save All ({generatedImages.length})</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

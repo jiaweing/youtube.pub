@@ -431,7 +431,7 @@ export function Gallery({
       {/* Gallery Grid */}
       <div className="relative flex-1">
         <ContextMenu>
-          <ContextMenuTrigger asChild>
+          <ContextMenuTrigger>
             <div
               className="absolute inset-0 overflow-hidden"
               onMouseDown={handleMouseDown}

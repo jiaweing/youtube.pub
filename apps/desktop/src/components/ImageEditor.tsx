@@ -47,6 +47,7 @@ import { VerticalResizablePanel } from "@/components/ui/vertical-resizable-panel
 import type { ImageLayer } from "@/stores/use-editor-store";
 import { useEditorStore } from "@/stores/use-editor-store";
 import {
+  type Layer as GalleryLayer,
   type ThumbnailItem,
   useGalleryStore,
 } from "@/stores/use-gallery-store";
@@ -97,8 +98,6 @@ export function ImageEditor({
     reset,
     undo,
     redo,
-    canUndo,
-    canRedo,
     historyIndex,
   } = useEditorStore();
 
@@ -110,7 +109,7 @@ export function ImageEditor({
   const loadLayerDataForId = useGalleryStore((s) => s.loadLayerDataForId);
 
   // Loading state for editor initialization
-  const [isLoadingEditor, setIsLoadingEditor] = useState(true);
+  const [, setIsLoadingEditor] = useState(true);
 
   // Initialize - load from files
   useEffect(() => {
@@ -136,7 +135,7 @@ export function ImageEditor({
           );
           for (const layer of savedLayers) {
             useEditorStore.setState((state) => ({
-              layers: [...state.layers, layer as ImageLayer],
+              layers: [...state.layers, layer as unknown as ImageLayer],
             }));
           }
           useEditorStore.setState({ activeLayerId: savedLayers[0].id });
@@ -284,7 +283,7 @@ export function ImageEditor({
         projectId,
         projectName,
         previewDataUrl,
-        layers,
+        layers as unknown as GalleryLayer[],
         canvasSize.width,
         canvasSize.height
       );
@@ -307,7 +306,7 @@ export function ImageEditor({
       null, // Pass null to create a new entry
       `${projectName} (Copy)`,
       previewDataUrl,
-      layers,
+      layers as unknown as GalleryLayer[],
       canvasSize.width,
       canvasSize.height
     );

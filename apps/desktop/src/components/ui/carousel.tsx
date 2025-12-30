@@ -168,7 +168,6 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
         className
       )}
       data-slot="carousel-item"
-      data-slot="carousel-item"
       {...props}
     />
   );
