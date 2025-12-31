@@ -483,11 +483,7 @@ export function BottomToolbar({
       </div>
 
       <AlertDialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
-        <AlertDialogContent
-          onEscapeKeyDown={(e) => {
-            if (isDeleting) e.preventDefault();
-          }}
-        >
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               Move {selectedIds.size} items to trash?

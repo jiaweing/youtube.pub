@@ -252,11 +252,11 @@ Copy`,
         canvasWidth: original.canvasWidth,
         canvasHeight: original.canvasHeight,
         previewUrl,
-      };
+      } as ThumbnailItem;
     });
 
     const results = await Promise.all(promises);
-    const newItems = results.filter(
+    const newItems: ThumbnailItem[] = results.filter(
       (item): item is ThumbnailItem => item !== null
     );
 
@@ -288,8 +288,8 @@ Copy`,
           item.name,
           item.createdAt,
           item.updatedAt,
-          item.canvasWidth || null,
-          item.canvasHeight || null,
+          item.canvasWidth ?? null,
+          item.canvasHeight ?? null,
         ]);
 
         await database.execute(

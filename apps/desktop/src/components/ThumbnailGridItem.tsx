@@ -120,7 +120,7 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
+      <ContextMenuTrigger>
         <div
           className={cn(
             "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
@@ -154,7 +154,7 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
           {isSelectionMode && (
             <div className="absolute top-2 left-2 z-20">
               {selectedIds.has(thumbnail.id) ? (
-                <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                <div className="flex size-6 items-center justify-center rounded-full bg-white text-black shadow-md">
                   <Check className="size-4" />
                 </div>
               ) : (

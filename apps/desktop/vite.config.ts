@@ -11,6 +11,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  worker: {
+    format: "es",
+  },
   clearScreen: false,
   server: {
     port: 1420,
