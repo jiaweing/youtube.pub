@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +76,6 @@ export function EmptyTrashDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="size-5 text-destructive" />
             Empty Trash?
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -163,8 +162,7 @@ export function DeleteSelectedDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="size-5 text-destructive" />
-            Permanently Delete {selectedCount} Items?
+            Permanently delete {selectedCount} items?
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete {selectedCount} selected{" "}
