@@ -90,6 +90,7 @@ export function TrashPage({ onClose }: TrashPageProps) {
     if (!isSelectionMode) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete selected items
       if (
         (e.key === "Delete" || e.key === "Backspace") &&
         selectedIds.size > 0
@@ -97,15 +98,21 @@ export function TrashPage({ onClose }: TrashPageProps) {
         e.preventDefault();
         setDeleteSelectedDialogOpen(true);
       }
+      // Escape - exit selection mode
       if (e.key === "Escape") {
         e.preventDefault();
         exitSelectionMode();
+      }
+      // Ctrl+A - select all
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        setSelectedIds(new Set(trashItems.map((item) => item.id)));
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSelectionMode, selectedIds.size, exitSelectionMode]);
+  }, [isSelectionMode, selectedIds.size, exitSelectionMode, trashItems]);
 
   const handleRestore = useCallback(
     async (item: TrashItem) => {
