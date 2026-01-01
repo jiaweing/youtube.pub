@@ -40,7 +40,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgxNkI1RTkzOTVFNDIzRTAKUldUZ0krU1ZrMTVyZ1VQVzk4WTB0VWhhcFRkZlhHUWNYV1FhQ0s5aUtVWE5jWU8wbENPWWFGQXEK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhBRkJGMTRFM0Y0QTA4MkQKUldRdENFby9Udkg3aWpzZDQwZ2hoWmhCU0ZBbmIybyt4eUdLVmdyZGFIR0xSTTA5Mld3ZHZqMWcK",
       "endpoints": [
         "https://github.com/jiaweing/youtube.pub/releases/latest/download/latest.json"
       ]
