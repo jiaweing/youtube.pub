@@ -25,7 +25,9 @@ export function GeneratedImageGrid({
   onSelectAll,
   onDeselectAll,
 }: GeneratedImageGridProps) {
-  if (images.length <= 1) return null;
+  if (images.length <= 1) {
+    return null;
+  }
 
   return (
     <div className="flex shrink-0 flex-col gap-2">

@@ -77,8 +77,12 @@ export function GeminiImagePage({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (generatedImages.length <= 1) return;
-      if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
+      if (generatedImages.length <= 1) {
+        return;
+      }
+      if ((e.target as HTMLElement).tagName === "TEXTAREA") {
+        return;
+      }
 
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();

@@ -20,7 +20,9 @@ export function ImageCompareSlider({
   const [isDragging, setIsDragging] = useState(false);
 
   const handleMove = useCallback((clientX: number) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const percentage = Math.min(100, Math.max(0, (x / rect.width) * 100));

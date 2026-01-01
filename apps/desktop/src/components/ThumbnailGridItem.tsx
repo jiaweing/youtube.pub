@@ -87,7 +87,9 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
   }, [thumbnail.id, thumbnail.previewUrl, cachedPreviewUrl, loadPreviewForId]);
 
   const handleClick = useCallback(() => {
-    if (isProcessing) return;
+    if (isProcessing) {
+      return;
+    }
     if (isSelectionMode) {
       toggleSelection(thumbnail.id);
     } else {

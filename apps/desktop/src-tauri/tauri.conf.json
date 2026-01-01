@@ -37,5 +37,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgxNkI1RTkzOTVFNDIzRTAKUldUZ0krU1ZrMTVyZ1VQVzk4WTB0VWhhcFRkZlhHUWNYV1FhQ0s5aUtVWE5jWU8wbENPWWFGQXEK",
+      "endpoints": [
+        "https://github.com/jiaweing/youtube.pub/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

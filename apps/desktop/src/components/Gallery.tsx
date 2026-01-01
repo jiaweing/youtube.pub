@@ -184,7 +184,9 @@ export function Gallery({
     }
 
     const thumbnail = thumbnails[index - 1];
-    if (!thumbnail) return null;
+    if (!thumbnail) {
+      return null;
+    }
 
     return (
       <ThumbnailGridItem

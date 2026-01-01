@@ -79,7 +79,9 @@ export function ImageEditor({
 
   // Initialize - load from files
   useEffect(() => {
-    if (initializedRef.current) return;
+    if (initializedRef.current) {
+      return;
+    }
     initializedRef.current = true;
     reset();
     setSavedHistoryIndex(-1);
@@ -148,7 +150,9 @@ export function ImageEditor({
   // Calculate fit scale
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -199,7 +203,9 @@ export function ImageEditor({
 
   const handleRemoveBackground = useCallback(async () => {
     const activeLayer = layers.find((l) => l.id === activeLayerId);
-    if (!activeLayer || activeLayer.type !== "image") return;
+    if (!activeLayer || activeLayer.type !== "image") {
+      return;
+    }
     setIsProcessing(true);
     const toastId = toast.loading("Removing background...");
     try {
@@ -220,7 +226,9 @@ export function ImageEditor({
   }, [activeLayerId, layers, addImageLayer]);
 
   const handleSave = useCallback(async () => {
-    if (!exportRef.current || isSaving) return;
+    if (!exportRef.current || isSaving) {
+      return;
+    }
     setIsSaving(true);
     try {
       const previewDataUrl = exportRef.current();
@@ -243,7 +251,9 @@ export function ImageEditor({
   }, [saveProject, projectId, projectName, layers, canvasSize, isSaving]);
 
   const handleSaveAsNew = useCallback(async () => {
-    if (!exportRef.current) return;
+    if (!exportRef.current) {
+      return;
+    }
     const previewDataUrl = exportRef.current();
     const newId = await saveProject(
       null,

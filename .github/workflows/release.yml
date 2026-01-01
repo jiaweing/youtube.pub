@@ -171,6 +171,9 @@ jobs:
             fi
             
             echo ""
+            echo "**All Commits**: https://github.com/${REPO}/commits/${VERSION}/"
+            
+            echo ""
             echo "## Downloads"
             echo ""
             echo "| Platform | Download |"
@@ -193,10 +196,11 @@ jobs:
           projectPath: apps/desktop
           tauriScript: bunx tauri
           tagName: ${{ github.ref_name }}
-          releaseName: "youtube.pub ${{ github.ref_name }}${{ steps.tag_message.outputs.message && format(' - {0}', steps.tag_message.outputs.message) || '' }}"
+          releaseName: "${{ github.ref_name }}${{ steps.tag_message.outputs.message && format(' - {0}', steps.tag_message.outputs.message) || '' }}"
           releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'nightly') || contains(github.ref_name, 'rc') }}
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
 
       - name: Generate checksums

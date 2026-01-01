@@ -9,11 +9,18 @@ import { TitleBar } from "@/components/TitleBar";
 import { TrashPage } from "@/components/TrashPage";
 import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
+import { useAppUpdater } from "@/hooks/use-app-updater";
 import { useEditorStore } from "@/stores/use-editor-store";
 import type { ThumbnailItem } from "@/stores/use-gallery-store";
 
 export type ViewMode = "3" | "4" | "5" | "row";
 type Page = "gallery" | "editor" | "ai-generate" | "trash";
+
+// Component to initialize the updater (runs once on gallery page mount)
+function UpdateChecker() {
+  useAppUpdater();
+  return null;
+}
 
 export default function App() {
   const [page, setPage] = useState<Page>("gallery");
@@ -132,6 +139,7 @@ export default function App() {
       )}
       <Toaster />
       <BackgroundRemovalQueue />
+      <UpdateChecker />
     </div>
   );
 }

@@ -147,8 +147,12 @@ export function LayersPanel() {
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     e.stopPropagation();
-                    if (e.key === "Enter") finishEditing();
-                    if (e.key === "Escape") cancelEditing();
+                    if (e.key === "Enter") {
+                      finishEditing();
+                    }
+                    if (e.key === "Escape") {
+                      cancelEditing();
+                    }
                   }}
                   ref={inputRef}
                   value={editingName}

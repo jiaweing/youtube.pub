@@ -103,7 +103,9 @@ export function SnowfallBackground({
   }, [count, color, speed, minSize, maxSize, minOpacity, maxOpacity]);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     // Generate CSS animations for each snowflake
     const styleSheet = document.createElement("style");
@@ -135,7 +137,9 @@ export function SnowfallBackground({
     };
   }, [snowflakes, wind, mounted]);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div

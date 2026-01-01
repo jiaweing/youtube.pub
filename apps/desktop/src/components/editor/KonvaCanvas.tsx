@@ -64,7 +64,9 @@ export function KonvaCanvas({ width, height, onExportRef }: KonvaCanvasProps) {
 
   // Update transformer when selection changes
   useEffect(() => {
-    if (!(transformerRef.current && stageRef.current)) return;
+    if (!(transformerRef.current && stageRef.current)) {
+      return;
+    }
 
     const selectedNode = stageRef.current.findOne(`#${activeLayerId}`);
     if (selectedNode && activeTool === "select") {
@@ -159,8 +161,12 @@ export function KonvaCanvas({ width, height, onExportRef }: KonvaCanvasProps) {
       const node = e.target;
       const { snapDeltaX, snapDeltaY, guides } = calculateSnap(node);
 
-      if (snapDeltaX !== 0) node.x(node.x() + snapDeltaX);
-      if (snapDeltaY !== 0) node.y(node.y() + snapDeltaY);
+      if (snapDeltaX !== 0) {
+        node.x(node.x() + snapDeltaX);
+      }
+      if (snapDeltaY !== 0) {
+        node.y(node.y() + snapDeltaY);
+      }
 
       setSnapGuides(guides);
     },
@@ -204,7 +210,9 @@ export function KonvaCanvas({ width, height, onExportRef }: KonvaCanvasProps) {
   );
 
   const renderLayer = (layer: EditorLayer) => {
-    if (!layer.visible) return null;
+    if (!layer.visible) {
+      return null;
+    }
 
     const commonProps = {
       layer,
@@ -282,7 +290,9 @@ export function KonvaCanvas({ width, height, onExportRef }: KonvaCanvasProps) {
           borderStroke="#a855f7"
           borderStrokeWidth={2}
           boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 10 || newBox.height < 10) return oldBox;
+            if (newBox.width < 10 || newBox.height < 10) {
+              return oldBox;
+            }
 
             const snappedBox = { ...newBox };
             const guides: SnapGuides = { vertical: [], horizontal: [] };

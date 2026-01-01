@@ -60,7 +60,9 @@ export function BottomToolbar({
   const trashCount = trashItems.length;
 
   const handleBulkDuplicate = useCallback(async () => {
-    if (isDuplicating) return;
+    if (isDuplicating) {
+      return;
+    }
     setIsDuplicating(true);
     try {
       const ids = Array.from(selectedIds);

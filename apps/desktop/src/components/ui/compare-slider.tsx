@@ -129,7 +129,9 @@ function CompareSlider(props: CompareSliderProps) {
       },
       getState: () => stateRef.current,
       setState: <K extends keyof StoreState>(key: K, value: StoreState[K]) => {
-        if (Object.is(stateRef.current[key], value)) return;
+        if (Object.is(stateRef.current[key], value)) {
+          return;
+        }
         stateRef.current[key] = value;
 
         if (key === "value") {
@@ -173,10 +175,14 @@ function CompareSlider(props: CompareSliderProps) {
       if (!isDraggingRef.current && propsRef.current.interaction === "drag") {
         return;
       }
-      if (!rootRef.current) return;
+      if (!rootRef.current) {
+        return;
+      }
 
       propsRef.current.onPointerMove?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       const rootRect = rootRef.current.getBoundingClientRect();
       const isVertical = propsRef.current.orientation === "vertical";
@@ -193,10 +199,14 @@ function CompareSlider(props: CompareSliderProps) {
 
   const onPointerDown = React.useCallback(
     (event: React.PointerEvent<RootElement>) => {
-      if (propsRef.current.interaction !== "drag") return;
+      if (propsRef.current.interaction !== "drag") {
+        return;
+      }
 
       propsRef.current.onPointerDown?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       event.currentTarget.setPointerCapture(event.pointerId);
       isDraggingRef.current = true;
@@ -207,10 +217,14 @@ function CompareSlider(props: CompareSliderProps) {
 
   const onPointerUp = React.useCallback(
     (event: React.PointerEvent<RootElement>) => {
-      if (propsRef.current.interaction !== "drag") return;
+      if (propsRef.current.interaction !== "drag") {
+        return;
+      }
 
       propsRef.current.onPointerUp?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       event.currentTarget.releasePointerCapture(event.pointerId);
       isDraggingRef.current = false;
@@ -222,7 +236,9 @@ function CompareSlider(props: CompareSliderProps) {
   const onKeyDown = React.useCallback(
     (event: React.KeyboardEvent<RootElement>) => {
       propsRef.current.onKeyDown?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       const currentValue = store.getState().value;
       const isVertical = propsRef.current.orientation === "vertical";

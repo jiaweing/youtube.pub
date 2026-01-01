@@ -135,11 +135,10 @@ jobs:
           TAG="${{ inputs.tag }}"
           TAG_MSG="${{ steps.tag_message.outputs.message }}"
 
-          # Build release name
           if [ -n "$TAG_MSG" ]; then
-            RELEASE_NAME="youtube.pub ${TAG} - ${TAG_MSG}"
+            RELEASE_NAME="${TAG} - ${TAG_MSG}"
           else
-            RELEASE_NAME="youtube.pub ${TAG}"
+            RELEASE_NAME="${TAG}"
           fi
 
           # Determine if prerelease
