@@ -3,110 +3,43 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g., v1.0.0)'
-        required: true
-        type: string
+      - "v*"
 
-permissions:
-  contents: write
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.create-release.outputs.id }}
-      release_upload_url: ${{ steps.create-release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
+  release:
+    name: Release (${{ matrix.name }})
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+            name: macOS (Apple Silicon)
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+            name: macOS (Intel)
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: ""
+            name: Linux
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ""
+            name: Windows
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Get version
-        id: get_version
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Get previous tag
-        id: prev_tag
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
-          REPO="${{ github.repository }}"
-          
-          echo "## What's Changed" > changelog.md
-          echo "" >> changelog.md
-          
-          if [ -n "$PREV_TAG" ]; then
-            # Get commits between previous tag and current
-            git log ${PREV_TAG}..HEAD --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" >> changelog.md
-          else
-            # First release - get all commits
-            git log --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" >> changelog.md
-          fi
-          
-          echo "" >> changelog.md
-          echo "" >> changelog.md
-          
-          if [ -n "$PREV_TAG" ]; then
-            echo "**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}" >> changelog.md
-          fi
-          
-          cat changelog.md
-
-      - name: Create Release
-        id: create-release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          name: Release ${{ steps.get_version.outputs.version }}
-          body_path: changelog.md
-          draft: true
-          prerelease: false
-
-  build-tauri:
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macOS builds
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-            name: macOS (Apple Silicon)
-          - platform: macos-latest
-            target: x86_64-apple-darwin
-            name: macOS (Intel)
-          # Windows build
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
-            name: Windows (x64)
-          # Linux build
-          - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            name: Linux (x64)
-
-    runs-on: ${{ matrix.platform }}
-    name: Build ${{ matrix.name }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -116,12 +49,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -129,18 +57,54 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
+            libayatana-appindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libssl-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libgtk-3-dev
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
 
       - name: Install dependencies
         run: bun install
         working-directory: apps/desktop
 
-      - name: Build Tauri app
+      - name: Get previous tag
+        id: prev_tag
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+          REPO="${{ github.repository }}"
+          
+          BODY="## What's Changed"$'\n\n'
+          
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
+            BODY+="$COMMITS"$'\n\n'
+            BODY+="**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}"
+          else
+            COMMITS=$(git log --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
+            BODY+="$COMMITS"
+          fi
+          
+          # Escape for GitHub Actions output
+          BODY="${BODY//'%'/'%25'}"
+          BODY="${BODY//$'\n'/'%0A'}"
+          BODY="${BODY//$'\r'/'%0D'}"
+          
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+      - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,15 +112,20 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: --target ${{ matrix.target }}
+          tauriScript: bunx tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: "youtube.pub ${{ github.ref_name }}"
+          releaseBody: |
+            ${{ steps.changelog.outputs.body }}
 
-  publish-release:
-    needs: [create-release, build-tauri]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.create-release.outputs.version }}
-          draft: false
+            ## Downloads
+
+            | Platform | Download |
+            |----------|----------|
+            | macOS (Apple Silicon) | `.dmg` (arm64) |
+            | macOS (Intel) | `.dmg` (x64) |
+            | Windows | `.exe` / `.msi` installer |
+            | Linux | `.deb` / `.AppImage` |
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
