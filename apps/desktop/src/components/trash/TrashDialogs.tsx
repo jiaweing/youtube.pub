@@ -1,0 +1,195 @@
+import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { TrashItem } from "@/stores/use-trash-store";
+
+interface RestoreAllDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  itemCount: number;
+  isProcessing: boolean;
+  onConfirm: () => void;
+}
+
+export function RestoreAllDialog({
+  open,
+  onOpenChange,
+  itemCount,
+  isProcessing,
+  onConfirm,
+}: RestoreAllDialogProps) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <RotateCcw className="size-5" />
+            Restore All Items?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will restore all {itemCount} items back to your gallery.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+          <AlertDialogAction disabled={isProcessing} onClick={onConfirm}>
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Restoring...
+              </>
+            ) : (
+              "Restore All"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+interface EmptyTrashDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  itemCount: number;
+  isProcessing: boolean;
+  onConfirm: () => void;
+}
+
+export function EmptyTrashDialog({
+  open,
+  onOpenChange,
+  itemCount,
+  isProcessing,
+  onConfirm,
+}: EmptyTrashDialogProps) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-destructive" />
+            Empty Trash?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete all {itemCount} items in the trash.
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isProcessing}
+            onClick={onConfirm}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Emptying...
+              </>
+            ) : (
+              "Empty Trash"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+interface DeleteItemDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: TrashItem | null;
+  onConfirm: () => void;
+}
+
+export function DeleteItemDialog({
+  open,
+  onOpenChange,
+  item,
+  onConfirm,
+}: DeleteItemDialogProps) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+          <AlertDialogDescription>
+            "{item?.name}" will be permanently deleted. This action cannot be
+            undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={onConfirm}
+          >
+            Delete Permanently
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+interface DeleteSelectedDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedCount: number;
+  isProcessing: boolean;
+  onConfirm: () => void;
+}
+
+export function DeleteSelectedDialog({
+  open,
+  onOpenChange,
+  selectedCount,
+  isProcessing,
+  onConfirm,
+}: DeleteSelectedDialogProps) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-destructive" />
+            Permanently Delete {selectedCount} Items?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete {selectedCount} selected{" "}
+            {selectedCount === 1 ? "item" : "items"}. This action cannot be
+            undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isProcessing}
+            onClick={onConfirm}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete Permanently"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

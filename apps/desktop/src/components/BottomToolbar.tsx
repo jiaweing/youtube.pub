@@ -1,5 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
 import {
   ArrowDownAZ,
   ArrowUpZA,
@@ -34,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { openAndLoadImages } from "@/lib/image-file-utils";
 import { useBackgroundRemovalQueue } from "@/stores/use-background-removal-queue";
 import { type SortField, useGalleryStore } from "@/stores/use-gallery-store";
 import { useSelectionStore } from "@/stores/use-selection-store";
@@ -227,33 +226,9 @@ export function BottomToolbar({
 
   const handleAddImage = useCallback(async () => {
     setShowMenu(false);
-    const selected = await open({
-      multiple: true,
-      filters: [
-        {
-          name: "Images",
-          extensions: ["png", "jpg", "jpeg", "webp", "gif"],
-        },
-      ],
-    });
-
-    if (selected) {
-      const files = Array.isArray(selected) ? selected : [selected];
-      for (const filePath of files) {
-        try {
-          const data = await readFile(filePath);
-          const blob = new Blob([data]);
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-          const fileName = filePath.split(/[/\\]/).pop() || "Image";
-          addThumbnail(dataUrl, fileName);
-        } catch (error) {
-          console.error("Failed to load image:", error);
-        }
-      }
+    const images = await openAndLoadImages();
+    for (const { dataUrl, fileName } of images) {
+      addThumbnail(dataUrl, fileName);
     }
   }, [addThumbnail]);
 
