@@ -1,5 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
 import {
   CheckSquare,
   GalleryThumbnails,
@@ -10,17 +8,12 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import {
-  forwardRef,
-  type HTMLAttributes,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { toast } from "sonner";
 import type { ViewMode } from "@/App";
+import { EmptyState } from "@/components/gallery/EmptyState";
+import { gridComponents } from "@/components/gallery/VirtuosoGridComponents";
 import { ThumbnailGridItem } from "@/components/ThumbnailGridItem";
 import {
   AlertDialog,
@@ -51,7 +44,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { VideoExtractor } from "@/components/VideoExtractor";
-import { cn } from "@/lib/utils";
+import { useDragSelection } from "@/hooks/use-drag-selection";
+import { openAndLoadImages } from "@/lib/image-file-utils";
 import {
   type ThumbnailItem,
   useGalleryStore,
@@ -64,35 +58,6 @@ interface GalleryProps {
   onThumbnailClick: (thumbnail: ThumbnailItem) => void;
   onExportClick: (thumbnail: ThumbnailItem) => void;
 }
-
-// Stable grid components - MUST be defined outside component to prevent remounting
-const GridList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, style, className, ...props }, ref) => (
-    <div
-      ref={ref}
-      style={style}
-      {...props}
-      className={cn("grid gap-4 px-4 pt-4 pb-4", className)}
-    >
-      {children}
-    </div>
-  )
-);
-GridList.displayName = "GridList";
-
-const GridItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, ...props }, ref) => (
-    <div ref={ref} {...props}>
-      {children}
-    </div>
-  )
-);
-GridItem.displayName = "GridItem";
-
-const gridComponents = {
-  List: GridList,
-  Item: GridItem,
-};
 
 export function Gallery({
   viewMode,
@@ -114,29 +79,22 @@ export function Gallery({
   const rawThumbnails = useGalleryStore((s) => s.thumbnails);
   const isLoaded = useGalleryStore((s) => s.isLoaded);
 
-  // Search
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Selection mode
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
   const selectAll = useSelectionStore((s) => s.selectAll);
   const toggleSelectionMode = useSelectionStore((s) => s.toggleSelectionMode);
   const exitSelectionMode = useSelectionStore((s) => s.exitSelectionMode);
 
-  // Scroll position restoration
   const lastClickedIndex = useGalleryUIStore((s) => s.lastClickedIndex);
   const setLastClickedIndex = useGalleryUIStore((s) => s.setLastClickedIndex);
 
   const thumbnails = useMemo(() => {
     let filtered = rawThumbnails;
-
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter((t) => t.name.toLowerCase().includes(query));
     }
-
-    // Sort
     return [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortField === "name") {
@@ -148,7 +106,6 @@ export function Gallery({
     });
   }, [rawThumbnails, sortField, sortOrder, searchQuery]);
 
-  // Get grid column class based on viewMode
   const gridColClass = useMemo(() => {
     const gridClasses: Record<ViewMode, string> = {
       "3": "grid-cols-3",
@@ -159,163 +116,35 @@ export function Gallery({
     return gridClasses[viewMode];
   }, [viewMode]);
 
-  // Drag selection state
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const isDragging = useRef(false);
-  const startPoint = useRef<{ x: number; y: number } | null>(null);
-  const [selectionBox, setSelectionBox] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
-
-  // Handle drag selection
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const container = scrollerRef.current;
-    if (!container) {
-      return;
-    }
-
-    // Create a specialized type guard or check if the target is a thumbnail or button
-    const target = e.target as HTMLElement;
-    if (
-      target.closest("button") ||
-      target.closest(".group") // Thumbnail container class
-    ) {
-      return;
-    }
-
-    if (e.button !== 0) {
-      return;
-    }
-
-    isDragging.current = true;
-    const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left + container.scrollLeft;
-    const y = e.clientY - rect.top + container.scrollTop;
-    startPoint.current = { x, y };
-
-    // Enable selection mode if not already active
-    if (!useSelectionStore.getState().isSelectionMode) {
-      useSelectionStore.getState().toggleSelectionMode();
-    }
-
-    // Standard behavior: clear selection on background click/drag unless Shift/Ctrl held
-    if (!(e.shiftKey || e.ctrlKey || e.metaKey)) {
-      useSelectionStore.getState().clearSelection();
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!(isDragging.current && startPoint.current)) {
-        return;
-      }
-
-      const rect = container.getBoundingClientRect();
-      const currentX = e.clientX - rect.left + container.scrollLeft;
-      const currentY = e.clientY - rect.top + container.scrollTop;
-
-      const x = Math.min(currentX, startPoint.current.x);
-      const y = Math.min(currentY, startPoint.current.y);
-      const width = Math.abs(currentX - startPoint.current.x);
-      const height = Math.abs(currentY - startPoint.current.y);
-
-      setSelectionBox({ x, y, width, height });
-
-      // Calculate intersections
-      const boxRect = { left: x, top: y, right: x + width, bottom: y + height };
-      const newSelectedIds: string[] = [];
-
-      // Get all thumbnail elements
-      const thumbnailElements = container.querySelectorAll(
-        "[data-thumbnail-id]"
-      );
-      for (const el of thumbnailElements) {
-        const elRect = (el as HTMLElement).getBoundingClientRect();
-        // Convert elRect to container-relative coordinates
-        const elRelLeft = elRect.left - rect.left + container.scrollLeft;
-        const elRelTop = elRect.top - rect.top + container.scrollTop;
-        const elRelRight = elRelLeft + elRect.width;
-        const elRelBottom = elRelTop + elRect.height;
-
-        const isIntersecting =
-          boxRect.left < elRelRight &&
-          boxRect.right > elRelLeft &&
-          boxRect.top < elRelBottom &&
-          boxRect.bottom > elRelTop;
-
-        if (isIntersecting) {
-          const id = el.getAttribute("data-thumbnail-id");
-          if (id) {
-            newSelectedIds.push(id);
-          }
-        }
-      }
-
-      // Update selection store - replace current selection with what's in box
-      useSelectionStore.getState().selectAll(newSelectedIds);
-    };
-
-    const handleMouseUp = () => {
-      isDragging.current = false;
-      startPoint.current = null;
-      setSelectionBox(null);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  }, []);
-
-  const handleAddImage = useCallback(async () => {
-    const selected = await open({
-      multiple: true,
-      filters: [
-        {
-          name: "Images",
-          extensions: ["png", "jpg", "jpeg", "webp", "gif"],
-        },
-      ],
+  // Drag selection hook
+  const { selectionBox, containerRef, scrollerRef, handleMouseDown } =
+    useDragSelection({
+      dataAttribute: "data-thumbnail-id",
+      isSelectionMode,
+      onEnableSelectionMode: toggleSelectionMode,
+      onSelectionChange: (ids) => useSelectionStore.getState().selectAll(ids),
+      onClearSelection: () => useSelectionStore.getState().clearSelection(),
     });
 
-    if (selected) {
-      const files = Array.isArray(selected) ? selected : [selected];
-      for (const filePath of files) {
-        try {
-          const data = await readFile(filePath);
-          const blob = new Blob([data]);
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-          const fileName = filePath.split(/[/\\]/).pop() || "Image";
-          addThumbnail(dataUrl, fileName);
-        } catch (error) {
-          console.error("Failed to load image:", error);
-        }
-      }
+  const handleAddImage = useCallback(async () => {
+    const images = await openAndLoadImages();
+    for (const { dataUrl, fileName } of images) {
+      addThumbnail(dataUrl, fileName);
     }
   }, [addThumbnail]);
 
-  // Get the loadFullImageForId function from store
   const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
 
   const handleRemoveBackground = useCallback(
     async (e: React.MouseEvent, thumbnail: ThumbnailItem) => {
       e.stopPropagation();
       setProcessingId(thumbnail.id);
-
       try {
-        // Load full image from file
         const fullImageUrl = await loadFullImageForId(thumbnail.id);
         if (!fullImageUrl) {
           console.error("Failed to load image for background removal");
           return;
         }
-
         const { removeBackgroundAsync } = await import(
           "@/lib/background-removal"
         );
@@ -341,9 +170,7 @@ export function Gallery({
     setDeleteDialogOpen(true);
   }, []);
 
-  // Item renderer for VirtuosoGrid - no useCallback to avoid stale closure issues
   const itemContent = (index: number) => {
-    // First item is the add button
     if (index === 0) {
       return (
         <button
@@ -357,9 +184,7 @@ export function Gallery({
     }
 
     const thumbnail = thumbnails[index - 1];
-    if (!thumbnail) {
-      return null;
-    }
+    if (!thumbnail) return null;
 
     return (
       <ThumbnailGridItem
@@ -369,7 +194,6 @@ export function Gallery({
         onRemoveBackground={handleRemoveBackground}
         onRename={handleRename}
         onThumbnailClick={(t) => {
-          // Store the clicked index for scroll restoration (index includes +1 offset for add button)
           setLastClickedIndex(index);
           onThumbnailClick(t);
         }}
@@ -378,7 +202,6 @@ export function Gallery({
     );
   };
 
-  // Show loading spinner while database is loading
   if (!isLoaded) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -390,19 +213,16 @@ export function Gallery({
 
   if (rawThumbnails.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4">
-        <GalleryThumbnails className="size-10 fill-muted-foreground text-muted-foreground opacity-40" />
-        <div className="text-center">
-          <p className="font-medium">No thumbnails yet</p>
-          <p className="mt-1 text-muted-foreground text-sm">
-            Start by adding images or extracting frames from videos
-          </p>
-        </div>
-        <Button onClick={handleAddImage} variant="ghost">
-          <Plus className="mr-2 size-4" />
-          Add Image
-        </Button>
-      </div>
+      <EmptyState
+        action={{
+          label: "Add Image",
+          icon: <Plus className="mr-2 size-4" />,
+          onClick: handleAddImage,
+        }}
+        description="Start by adding images or extracting frames from videos"
+        icon={<GalleryThumbnails className="size-10 fill-muted-foreground" />}
+        title="No thumbnails yet"
+      />
     );
   }
 
@@ -472,7 +292,7 @@ export function Gallery({
                     scrollerRef.current = ref as HTMLDivElement;
                   }}
                   style={{ height: "100%", width: "100%" }}
-                  totalCount={thumbnails.length + 1} // +1 for add button
+                  totalCount={thumbnails.length + 1}
                 />
               )}
             </div>

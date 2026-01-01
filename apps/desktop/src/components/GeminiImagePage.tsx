@@ -1,17 +1,15 @@
 import {
-  AlertCircle,
   ArrowLeft,
-  Check,
   ChevronLeft,
   ChevronRight,
   ImagePlus,
   Layers,
-  Loader2,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { GeminiPromptPanel } from "@/components/gemini/GeminiPromptPanel";
+import { GeneratedImageGrid } from "@/components/gemini/GeneratedImageGrid";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   CompareSlider,
   CompareSliderAfter,
@@ -24,15 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -45,7 +34,6 @@ import {
   generateImageWithGemini,
 } from "@/lib/gemini-image";
 import { getGeminiApiKey } from "@/lib/gemini-store";
-import { cn } from "@/lib/utils";
 
 interface GeminiImagePageProps {
   inputImageDataUrl: string;
@@ -58,8 +46,6 @@ interface GeneratedImage {
   url: string;
   index: number;
 }
-
-const GENERATION_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 export function GeminiImagePage({
   inputImageDataUrl,
@@ -84,17 +70,14 @@ export function GeminiImagePage({
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [useSelectedAsInput, setUseSelectedAsInput] = useState(false);
 
-  // Load API key on mount
   useEffect(() => {
     getGeminiApiKey().then(setApiKey);
   }, []);
 
-  // Keyboard navigation for version preview
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (generatedImages.length <= 1) return;
-
-      // Don't handle if user is typing in textarea
       if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
 
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
@@ -120,7 +103,6 @@ export function GeminiImagePage({
       return;
     }
 
-    // Determine input images
     let inputImages: string[] = [currentInputUrl];
     if (useSelectedAsInput && selectedIndices.size > 0) {
       inputImages = generatedImages
@@ -137,9 +119,8 @@ export function GeminiImagePage({
 
     const results: GeneratedImage[] = [];
     let errorCount = 0;
-
-    // Generate images in parallel (use first input image for now - API doesn't support multiple)
     const primaryInput = inputImages[0];
+
     const promises = Array.from({ length: generationCount }, async (_, i) => {
       try {
         const result = await generateImageWithGemini(
@@ -154,7 +135,6 @@ export function GeminiImagePage({
         );
         results.push({ url: newImageUrl, index: i });
         setProgress((p) => ({ ...p, current: p.current + 1 }));
-        // Update results as they come in
         setGeneratedImages([...results].sort((a, b) => a.index - b.index));
       } catch (err) {
         errorCount++;
@@ -168,7 +148,6 @@ export function GeminiImagePage({
     setUseSelectedAsInput(false);
 
     if (results.length > 0) {
-      // Update input URL if we used selected images
       if (inputImages[0] !== currentInputUrl) {
         setCurrentInputUrl(inputImages[0]);
       }
@@ -215,7 +194,6 @@ export function GeminiImagePage({
     setSelectedIndices(new Set());
   }, []);
 
-  // Save handlers
   const handleSaveSelectedAsLayers = useCallback(() => {
     const selected = generatedImages.filter((_, idx) =>
       selectedIndices.has(idx)
@@ -297,117 +275,24 @@ export function GeminiImagePage({
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel - Prompt and settings */}
-        <div className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto p-4">
-          {!hasApiKey && (
-            <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-600">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>
-                Please configure your Gemini API key in the gallery settings.
-              </span>
-            </div>
-          )}
-
-          {/* Prompt Input */}
-          <div className="flex flex-1 flex-col gap-2">
-            <Label className="text-xs" htmlFor="prompt">
-              Prompt
-            </Label>
-            <Textarea
-              className="flex-1 resize-none"
-              disabled={!hasApiKey || isGenerating}
-              id="prompt"
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe how you want to transform the image..."
-              value={prompt}
-            />
-          </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="flex items-start gap-2 overflow-hidden rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span className="overflow-wrap-anywhere min-w-0 break-words">
-                {error}
-              </span>
-            </div>
-          )}
-
-          {/* Use selected as input checkbox - above Generate */}
-          {hasGeneratedImages && hasSelection && (
-            <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground text-xs hover:text-foreground">
-              <Checkbox
-                checked={useSelectedAsInput}
-                onCheckedChange={(checked) =>
-                  setUseSelectedAsInput(checked === true)
-                }
-              />
-              <span>Use {selectedIndices.size} selected as input</span>
-            </label>
-          )}
-
-          {/* Generate Button */}
-          <Button
-            className="w-full"
-            disabled={!(hasApiKey && prompt.trim()) || isGenerating}
-            onClick={handleGenerate}
-            size="lg"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                {progress.total > 1
-                  ? `Generating ${progress.current}/${progress.total}...`
-                  : "Generating..."}
-              </>
-            ) : (
-              <>Generate</>
-            )}
-          </Button>
-
-          {/* Model and Count selects - below button with transparent style */}
-          <div className="-mt-3 flex items-center gap-1">
-            <Select
-              onValueChange={(v) => setModel(v as GeminiImageModel)}
-              value={model}
-            >
-              <SelectTrigger
-                className="!h-7 !bg-transparent w-auto border-0 px-2"
-                id="model-select"
-              >
-                <SelectValue>
-                  {GEMINI_IMAGE_MODELS.find((m) => m.value === model)?.label}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {GEMINI_IMAGE_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              disabled={isGenerating}
-              onValueChange={(v) => setGenerationCount(Number(v))}
-              value={String(generationCount)}
-            >
-              <SelectTrigger
-                className="!h-7 !bg-transparent w-14 border-0 px-2"
-                id="count-select"
-              >
-                <SelectValue>{generationCount}×</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {GENERATION_COUNTS.map((count) => (
-                  <SelectItem key={count} value={String(count)}>
-                    {count}×
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <GeminiPromptPanel
+          error={error}
+          generationCount={generationCount}
+          hasApiKey={hasApiKey}
+          hasGeneratedImages={hasGeneratedImages}
+          hasSelection={hasSelection}
+          isGenerating={isGenerating}
+          model={model}
+          onGenerate={handleGenerate}
+          onGenerationCountChange={setGenerationCount}
+          onModelChange={setModel}
+          onPromptChange={setPrompt}
+          onUseSelectedAsInputChange={setUseSelectedAsInput}
+          progress={progress}
+          prompt={prompt}
+          selectedCount={selectedIndices.size}
+          useSelectedAsInput={useSelectedAsInput}
+        />
 
         {/* Right panel - Preview */}
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -432,7 +317,6 @@ export function GeminiImagePage({
                       />
                     </CompareSliderBefore>
                     <CompareSliderHandle />
-                    {/* Always visible labels */}
                     <span className="pointer-events-none absolute top-3 left-3 z-30 rounded-md border border-border bg-background/80 px-2 py-1 font-medium text-xs backdrop-blur-sm">
                       Original
                     </span>
@@ -467,79 +351,15 @@ export function GeminiImagePage({
                   )}
                 </div>
 
-                {/* Thumbnail grid with checkboxes */}
-                {generatedImages.length > 1 && (
-                  <div className="flex shrink-0 flex-col gap-2">
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {generatedImages.map((img, idx) => {
-                        const isSelected = selectedIndices.has(idx);
-                        const isViewing = idx === viewingIndex;
-                        return (
-                          <button
-                            className={cn(
-                              "group relative size-20 cursor-pointer overflow-hidden rounded-md border-2 transition-all",
-                              isViewing
-                                ? "border-primary ring-2 ring-primary/30"
-                                : isSelected
-                                  ? "border-primary/50"
-                                  : "border-transparent"
-                            )}
-                            key={img.index}
-                            onClick={() => setViewingIndex(idx)}
-                            type="button"
-                          >
-                            <img
-                              alt={`Version ${idx + 1}`}
-                              className="h-full w-full object-cover"
-                              src={img.url}
-                            />
-                            {/* Selection checkbox overlay */}
-                            <div
-                              className={cn(
-                                "absolute top-1 left-1 flex size-5 items-center justify-center rounded-full transition-all",
-                                isSelected
-                                  ? "!bg-white text-black shadow-md"
-                                  : "border-2 border-white/80 bg-black/30 opacity-0 shadow-md group-hover:opacity-100"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleSelection(idx);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.stopPropagation();
-                                  toggleSelection(idx);
-                                }
-                              }}
-                            >
-                              {isSelected && <Check className="size-3" />}
-                            </div>
-                            <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1.5 font-medium text-white text-xs">
-                              v{idx + 1}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        className="text-muted-foreground text-xs hover:text-foreground"
-                        onClick={selectAll}
-                        type="button"
-                      >
-                        Select all
-                      </button>
-                      <span className="text-muted-foreground text-xs">•</span>
-                      <button
-                        className="text-muted-foreground text-xs hover:text-foreground"
-                        onClick={deselectAll}
-                        type="button"
-                      >
-                        Deselect all
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <GeneratedImageGrid
+                  images={generatedImages}
+                  onDeselectAll={deselectAll}
+                  onSelectAll={selectAll}
+                  onToggleSelection={toggleSelection}
+                  onViewingIndexChange={setViewingIndex}
+                  selectedIndices={selectedIndices}
+                  viewingIndex={viewingIndex}
+                />
               </div>
             ) : (
               <div className="max-h-full max-w-full overflow-hidden rounded-lg border border-border">
@@ -555,7 +375,6 @@ export function GeminiImagePage({
           {/* Footer with save actions */}
           {hasGeneratedImages && (
             <div className="flex shrink-0 items-center justify-end gap-2 bg-background px-4 py-3">
-              {/* Save Selected dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <Button disabled={!hasSelection} size="sm" variant="ghost">
@@ -574,7 +393,6 @@ export function GeminiImagePage({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Save All dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <Button size="sm">Save All ({generatedImages.length})</Button>

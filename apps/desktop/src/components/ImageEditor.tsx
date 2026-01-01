@@ -1,16 +1,7 @@
-import {
-  ArrowLeft,
-  ChevronDown,
-  Copy,
-  Link2,
-  Link2Off,
-  Loader2,
-  Minus,
-  Plus,
-  Save,
-} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { EditorFooter } from "@/components/editor/EditorFooter";
+import { EditorHeader } from "@/components/editor/EditorHeader";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { KonvaCanvas } from "@/components/editor/KonvaCanvas";
 import { LayersPanel } from "@/components/editor/LayersPanel";
@@ -26,23 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ResizablePanel } from "@/components/ui/resizable-panel";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { VerticalResizablePanel } from "@/components/ui/vertical-resizable-panel";
 import type { ImageLayer } from "@/stores/use-editor-store";
 import { useEditorStore } from "@/stores/use-editor-store";
@@ -58,6 +33,7 @@ interface ImageEditorProps {
   onExport: () => void;
   onAiGenerate: (imageDataUrl: string) => void;
 }
+
 export function ImageEditor({
   thumbnail,
   onClose,
@@ -70,26 +46,19 @@ export function ImageEditor({
   const [projectId, setProjectId] = useState<string | null>(thumbnail.id);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
-  const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showCanvasSizeDialog, setShowCanvasSizeDialog] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [savedHistoryIndex, setSavedHistoryIndex] = useState(-1);
   const [canvasSize, setCanvasSize] = useState({
     width: thumbnail.canvasWidth || 1280,
     height: thumbnail.canvasHeight || 720,
   });
-  const [tempCanvasSize, setTempCanvasSize] = useState(canvasSize);
-  const [keepAspectRatio, setKeepAspectRatio] = useState(false);
-  const aspectRatio = canvasSize.width / canvasSize.height;
   const [zoom, setZoom] = useState(1);
   const [fitScale, setFitScale] = useState(1);
   const saveProject = useGalleryStore((s) => s.saveProject);
   const updateThumbnailName = useGalleryStore((s) => s.updateThumbnailName);
   const addThumbnail = useGalleryStore((s) => s.addThumbnail);
   const [projectName, setProjectName] = useState(thumbnail.name);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const nameInputRef = useRef<HTMLInputElement>(null);
   const {
     layers,
     activeLayerId,
@@ -101,38 +70,25 @@ export function ImageEditor({
     historyIndex,
   } = useEditorStore();
 
-  // Track unsaved changes
   const hasUnsavedChanges = historyIndex !== savedHistoryIndex;
 
-  // File loading methods from gallery store
   const loadFullImageForId = useGalleryStore((s) => s.loadFullImageForId);
   const loadLayerDataForId = useGalleryStore((s) => s.loadLayerDataForId);
 
-  // Loading state for editor initialization
   const [, setIsLoadingEditor] = useState(true);
 
   // Initialize - load from files
   useEffect(() => {
-    if (initializedRef.current) {
-      return;
-    }
+    if (initializedRef.current) return;
     initializedRef.current = true;
     reset();
-    setSavedHistoryIndex(-1); // Reset saved state for new file
+    setSavedHistoryIndex(-1);
     setIsLoadingEditor(true);
 
     const loadProject = async () => {
       try {
-        // Try to load layer data first (existing project)
         const savedLayers = await loadLayerDataForId(thumbnail.id);
-
         if (savedLayers && savedLayers.length > 0) {
-          // Load existing project with layers
-          console.log(
-            "[ImageEditor] Loading project with",
-            savedLayers.length,
-            "layers"
-          );
           for (const layer of savedLayers) {
             useEditorStore.setState((state) => ({
               layers: [...state.layers, layer as unknown as ImageLayer],
@@ -148,29 +104,19 @@ export function ImageEditor({
             thumbnail.canvasHeight || 720
           );
         } else {
-          // Load full image for new project
           const fullImageUrl = await loadFullImageForId(thumbnail.id);
           if (!fullImageUrl) {
             console.error("[ImageEditor] Failed to load full image");
             setIsLoadingEditor(false);
             return;
           }
-
-          // Create new project from image
           const img = new window.Image();
           img.onload = () => {
-            console.log(
-              "[ImageEditor] Image loaded:",
-              img.naturalWidth,
-              "x",
-              img.naturalHeight
-            );
             const w = img.naturalWidth;
             const h = img.naturalHeight;
             addImageLayer(fullImageUrl, w, h);
             setCanvasSize({ width: w, height: h });
             setStoreCanvasSize(w, h);
-            // Sync savedHistoryIndex after layer is added to prevent false "unsaved changes"
             setSavedHistoryIndex(useEditorStore.getState().historyIndex);
             setIsLoadingEditor(false);
           };
@@ -179,7 +125,7 @@ export function ImageEditor({
             setIsLoadingEditor(false);
           };
           img.src = fullImageUrl;
-          return; // Don't set loading false yet, wait for image load
+          return;
         }
       } catch (error) {
         console.error("[ImageEditor] Failed to load project:", error);
@@ -198,12 +144,11 @@ export function ImageEditor({
     loadFullImageForId,
     loadLayerDataForId,
   ]);
+
   // Calculate fit scale
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) {
-      return;
-    }
+    if (!container) return;
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -219,6 +164,7 @@ export function ImageEditor({
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
   }, [canvasSize]);
+
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -226,9 +172,11 @@ export function ImageEditor({
       setZoom((prev) => Math.max(0.1, Math.min(5, prev + delta)));
     }
   }, []);
+
   const handleZoomIn = () => setZoom((prev) => Math.min(5, prev + 0.25));
   const handleZoomOut = () => setZoom((prev) => Math.max(0.1, prev - 0.25));
   const handleZoomFit = () => setZoom(1);
+
   const handleAddFromGallery = useCallback(
     (dataUrl: string) => {
       const img = new window.Image();
@@ -248,11 +196,10 @@ export function ImageEditor({
     },
     [addImageLayer, canvasSize]
   );
+
   const handleRemoveBackground = useCallback(async () => {
     const activeLayer = layers.find((l) => l.id === activeLayerId);
-    if (!activeLayer || activeLayer.type !== "image") {
-      return;
-    }
+    if (!activeLayer || activeLayer.type !== "image") return;
     setIsProcessing(true);
     const toastId = toast.loading("Removing background...");
     try {
@@ -271,11 +218,9 @@ export function ImageEditor({
       setIsProcessing(false);
     }
   }, [activeLayerId, layers, addImageLayer]);
+
   const handleSave = useCallback(async () => {
-    if (!exportRef.current || isSaving) {
-      return;
-    }
-    setShowSaveMenu(false);
+    if (!exportRef.current || isSaving) return;
     setIsSaving(true);
     try {
       const previewDataUrl = exportRef.current();
@@ -296,14 +241,12 @@ export function ImageEditor({
       setIsSaving(false);
     }
   }, [saveProject, projectId, projectName, layers, canvasSize, isSaving]);
+
   const handleSaveAsNew = useCallback(async () => {
-    if (!exportRef.current) {
-      return;
-    }
-    setShowSaveMenu(false);
+    if (!exportRef.current) return;
     const previewDataUrl = exportRef.current();
     const newId = await saveProject(
-      null, // Pass null to create a new entry
+      null,
       `${projectName} (Copy)`,
       previewDataUrl,
       layers as unknown as GalleryLayer[],
@@ -314,6 +257,7 @@ export function ImageEditor({
     setProjectName(`${projectName} (Copy)`);
     toast.success("Saved as new project");
   }, [saveProject, projectName, layers, canvasSize]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -333,67 +277,37 @@ export function ImageEditor({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave, undo, redo]);
+
+  const handleNameChange = useCallback(
+    (name: string) => {
+      setProjectName(name);
+      if (projectId) {
+        updateThumbnailName(projectId, name);
+      }
+    },
+    [projectId, updateThumbnailName]
+  );
+
+  const handleCanvasSizeChange = useCallback(
+    (size: { width: number; height: number }) => {
+      setCanvasSize(size);
+      setStoreCanvasSize(size.width, size.height);
+    },
+    [setStoreCanvasSize]
+  );
+
   const effectiveScale = fitScale * zoom;
+
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* Header - minimal */}
-      <div
-        className="flex shrink-0 items-center gap-3 border-border border-b px-3 py-2"
-        data-tauri-drag-region
-      >
-        <Tooltip>
-          <TooltipTrigger
-            className={`${buttonVariants({
-              size: "icon-sm",
-              variant: "ghost",
-            })} relative z-101`}
-            onClick={() => {
-              if (hasUnsavedChanges) {
-                setShowConfirmClose(true);
-              } else {
-                onClose();
-              }
-            }}
-          >
-            <ArrowLeft className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>Back to Gallery</TooltipContent>
-        </Tooltip>
-        {isEditingName ? (
-          <input
-            className="relative z-101 max-w-50 border-none bg-transparent text-sm outline-none"
-            defaultValue={projectName}
-            onBlur={(e) => {
-              setProjectName(e.target.value);
-              setIsEditingName(false);
-              if (projectId) {
-                updateThumbnailName(projectId, e.target.value);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.currentTarget.blur();
-              }
-              if (e.key === "Escape") {
-                setIsEditingName(false);
-              }
-            }}
-            ref={nameInputRef}
-          />
-        ) : (
-          <span
-            className="relative z-101 cursor-text truncate text-muted-foreground text-sm hover:text-foreground"
-            onClick={() => {
-              setIsEditingName(true);
-              setTimeout(() => nameInputRef.current?.focus(), 0);
-            }}
-            onKeyDown={() => {}}
-          >
-            {projectName}
-          </span>
-        )}
-      </div>
-      {/* Main content */}
+      <EditorHeader
+        hasUnsavedChanges={hasUnsavedChanges}
+        onClose={onClose}
+        onNameChange={handleNameChange}
+        onShowConfirmClose={() => setShowConfirmClose(true)}
+        projectName={projectName}
+      />
+
       <div className="flex flex-1 overflow-hidden">
         <EditorToolbar
           isProcessing={isProcessing}
@@ -415,7 +329,7 @@ export function ImageEditor({
             }
           }}
         />
-        {/* Canvas container */}
+
         <div className="flex flex-1 flex-col overflow-hidden">
           <div
             className="relative flex flex-1 items-center justify-center overflow-auto bg-neutral-900"
@@ -435,225 +349,22 @@ export function ImageEditor({
               />
             </div>
           </div>
-          {/* Footer controls */}
-          <div className="flex shrink-0 items-center justify-between border-border border-t bg-background px-3 py-2">
-            <Tooltip>
-              <TooltipTrigger
-                className="cursor-pointer text-muted-foreground text-xs hover:text-foreground"
-                onClick={() => setShowCanvasSizeDialog(true)}
-                type="button"
-              >
-                {`${canvasSize.width} × ${canvasSize.height}`}
-              </TooltipTrigger>
-              <TooltipContent>Change Canvas Size</TooltipContent>
-            </Tooltip>
-            <Dialog
-              onOpenChange={(open) => {
-                setShowCanvasSizeDialog(open);
-                if (open) {
-                  setTempCanvasSize(canvasSize);
-                }
-              }}
-              open={showCanvasSizeDialog}
-            >
-              <DialogContent className="sm:max-w-xs">
-                <DialogHeader>
-                  <DialogTitle>Change Canvas Size</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <Label
-                        className="mb-1.5 block text-xs"
-                        htmlFor="canvas-width"
-                      >
-                        Width
-                      </Label>
-                      <Input
-                        id="canvas-width"
-                        max={7680}
-                        min={1}
-                        onChange={(e) => {
-                          const newWidth = Number(e.target.value);
-                          if (keepAspectRatio) {
-                            const newHeight = Math.round(
-                              newWidth / aspectRatio
-                            );
-                            setTempCanvasSize({
-                              width: newWidth,
-                              height: newHeight,
-                            });
-                          } else {
-                            setTempCanvasSize((prev) => ({
-                              ...prev,
-                              width: newWidth,
-                            }));
-                          }
-                        }}
-                        type="number"
-                        value={tempCanvasSize.width}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Label
-                        className="mb-1.5 block text-xs"
-                        htmlFor="canvas-height"
-                      >
-                        Height
-                      </Label>
-                      <Input
-                        id="canvas-height"
-                        max={7680}
-                        min={1}
-                        onChange={(e) => {
-                          const newHeight = Number(e.target.value);
-                          if (keepAspectRatio) {
-                            const newWidth = Math.round(
-                              newHeight * aspectRatio
-                            );
-                            setTempCanvasSize({
-                              width: newWidth,
-                              height: newHeight,
-                            });
-                          } else {
-                            setTempCanvasSize((prev) => ({
-                              ...prev,
-                              height: newHeight,
-                            }));
-                          }
-                        }}
-                        type="number"
-                        value={tempCanvasSize.height}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={keepAspectRatio}
-                      id="keep-aspect-ratio"
-                      onCheckedChange={(checked) =>
-                        setKeepAspectRatio(checked === true)
-                      }
-                    />
-                    <Label
-                      className="flex cursor-pointer items-center gap-1.5 text-xs"
-                      htmlFor="keep-aspect-ratio"
-                    >
-                      {keepAspectRatio ? (
-                        <Link2 className="size-3.5" />
-                      ) : (
-                        <Link2Off className="size-3.5 text-muted-foreground" />
-                      )}
-                      Keep aspect ratio
-                    </Label>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={() => setShowCanvasSizeDialog(false)}
-                    variant="ghost"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setCanvasSize(tempCanvasSize);
-                      setStoreCanvasSize(
-                        tempCanvasSize.width,
-                        tempCanvasSize.height
-                      );
-                      setShowCanvasSizeDialog(false);
-                      toast.success(
-                        `Canvas resized to ${tempCanvasSize.width} × ${tempCanvasSize.height}`
-                      );
-                    }}
-                  >
-                    Apply
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            {/* Zoom controls */}
-            <div className="flex items-center gap-0.5 rounded-md px-0.5">
-              <Button onClick={handleZoomOut} size="icon-sm" variant="ghost">
-                <Minus className="size-3" />
-              </Button>
-              <Button
-                className="min-w-12 text-xs"
-                onClick={handleZoomFit}
-                size="sm"
-                variant="ghost"
-              >
-                {Math.round(zoom * 100)}%
-              </Button>
-              <Button onClick={handleZoomIn} size="icon-sm" variant="ghost">
-                <Plus className="size-3" />
-              </Button>
-            </div>
-            {/* Save/Export */}
-            <div className="flex gap-2">
-              <Button onClick={onExport} size="sm" variant="ghost">
-                Export
-              </Button>
-              <div className="relative">
-                <Button
-                  className="gap-2"
-                  disabled={isSaving}
-                  onClick={() => setShowSaveMenu(!showSaveMenu)}
-                  size="sm"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      {hasUnsavedChanges && (
-                        <span className="relative flex size-3">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                          <span className="relative inline-flex size-3 rounded-full bg-orange-500" />
-                        </span>
-                      )}
-                      Save
-                      <ChevronDown className="size-3" />
-                    </>
-                  )}
-                </Button>
-                {showSaveMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowSaveMenu(false)}
-                      onKeyDown={() => {}}
-                    />
-                    <div className="absolute right-0 bottom-full z-50 mb-2 w-40 rounded-lg border border-border bg-card p-1 shadow-lg">
-                      <Button
-                        className="w-full justify-start"
-                        onClick={handleSave}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        <Save className="mr-2 size-4" />
-                        Save
-                      </Button>
-                      <Button
-                        className="w-full justify-start"
-                        onClick={handleSaveAsNew}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        <Copy className="mr-2 size-4" />
-                        Save as New
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+
+          <EditorFooter
+            canvasSize={canvasSize}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSaving={isSaving}
+            onCanvasSizeChange={handleCanvasSizeChange}
+            onExport={onExport}
+            onSave={handleSave}
+            onSaveAsNew={handleSaveAsNew}
+            onZoomFit={handleZoomFit}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            zoom={zoom}
+          />
         </div>
-        {/* Right panels - combined column */}
+
         <ResizablePanel
           defaultWidth={260}
           maxWidth={360}
@@ -669,6 +380,7 @@ export function ImageEditor({
           />
         </ResizablePanel>
       </div>
+
       {showGalleryPicker && (
         <GalleryPicker
           onClose={() => setShowGalleryPicker(false)}
@@ -676,7 +388,6 @@ export function ImageEditor({
         />
       )}
 
-      {/* Confirm close dialog */}
       <AlertDialog onOpenChange={setShowConfirmClose} open={showConfirmClose}>
         <AlertDialogContent>
           <AlertDialogHeader>

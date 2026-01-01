@@ -1,25 +1,54 @@
 # youtube.pub
 
-A minimal desktop application for creating YouTube thumbnails. Extract frames from videos, edit with layers and text, remove backgrounds with AI, and export in multiple formats.
+A minimal desktop application for creating YouTube thumbnails. Extract frames from videos, edit with layers, remove backgrounds with AI, generate images with Gemini, and export in multiple formats.
 
 ## Features
 
-- **Frame Extraction** - Scrub through video timeline and extract any frame as an image
-- **Gallery View** - Organize thumbnails in grid (3x3, 4x4, 5x5) or list view
-- **Image Editor** - Layer-based editing with text overlays
-- **Background Removal** - AI-powered background removal using imgly
-- **Export Options** - PNG, JPEG, WebP with custom resolution and quality settings
-- **Persistent Storage** - Thumbnails saved locally in OS app data folder
+### Gallery
+- Thumbnail grid view (3x3, 4x4, 5x5) or list view
+- Search and filter thumbnails
+- Sort by name, date added, or last edited
+- Drag selection for bulk operations
+- Batch duplicate, delete, and background removal
+
+### Video Frame Extraction
+- Scrub through video timeline
+- Extract any frame as an image
+- Supports MP4, WebM, and other common formats
+
+### Image Editor
+- Layer-based editing with drag, resize, and rotate
+- Add images from gallery as overlays
+- Adjustable canvas size
+- Undo/redo support
+- Project auto-save with unsaved changes detection
+
+### AI Features
+- Background removal powered by imgly
+- Gemini image generation with before/after comparison
+- Generate multiple image variations at once
+- Save as new layer or to gallery
+
+### Trash
+- 30-day retention for deleted items
+- Restore individual or bulk items
+- Permanent deletion option
+
+### Export
+- PNG, JPEG, WebP formats
+- Custom resolution and quality settings
+- Preview before export
 
 ## Tech Stack
 
-- **Tauri v2** - Rust-based desktop framework
-- **React 19** - UI framework
-- **Vite** - Build tool
-- **TailwindCSS v4** - Styling
-- **shadcn/ui** - Component library (base-lyra style)
-- **Zustand** - State management
-- **SQLite** - Metadata storage (planned)
+- Tauri v2 - Rust-based desktop framework
+- React 19 - UI framework
+- Vite - Build tool
+- TailwindCSS v4 - Styling
+- shadcn/ui - Component library
+- Zustand - State management
+- SQLite - Local database for metadata
+- Stronghold - Secure API key storage
 
 ## Getting Started
 
@@ -55,16 +84,21 @@ Installers are generated in `src-tauri/target/release/bundle/`.
 apps/desktop/
 ├── src/
 │   ├── components/
-│   │   ├── Gallery.tsx        # Thumbnail grid with actions
-│   │   ├── VideoExtractor.tsx # Frame extraction modal
-│   │   ├── ImageEditor.tsx    # Layer-based editor
-│   │   └── ExportDialog.tsx   # Export settings
-│   ├── stores/
-│   │   └── useGalleryStore.ts # Thumbnail state
-│   └── index.css              # TailwindCSS theme
+│   │   ├── gallery/         # Shared gallery components
+│   │   ├── editor/          # Editor sub-components
+│   │   ├── gemini/          # AI generation components
+│   │   ├── trash/           # Trash page components
+│   │   ├── Gallery.tsx      # Main gallery view
+│   │   ├── ImageEditor.tsx  # Layer-based editor
+│   │   ├── GeminiImagePage.tsx # AI image generation
+│   │   └── TrashPage.tsx    # Trash management
+│   ├── stores/              # Zustand state stores
+│   ├── hooks/               # Custom React hooks
+│   ├── lib/                 # Utilities and helpers
+│   └── index.css            # TailwindCSS theme
 ├── src-tauri/
-│   ├── src/lib.rs             # Tauri plugins setup
-│   └── tauri.conf.json        # App configuration
+│   ├── src/lib.rs           # Tauri plugins setup
+│   └── tauri.conf.json      # App configuration
 └── package.json
 ```
 
@@ -77,7 +111,3 @@ Thumbnails and metadata are stored in the OS-specific app data directory:
 | Windows | `C:\Users\<user>\AppData\Roaming\pub.youtube.desktop`   |
 | macOS   | `~/Library/Application Support/pub.youtube.desktop`    |
 | Linux   | `~/.local/share/pub.youtube.desktop`                    |
-
-## License
-
-MIT
