@@ -60,14 +60,19 @@ export function useAppUpdater() {
       description: "0%",
     });
 
+    let totalBytes = 0;
+    let downloadedBytes = 0;
+
     try {
       await update.downloadAndInstall((event) => {
         if (event.event === "Started" && event.data.contentLength) {
-          // Download started
+          totalBytes = event.data.contentLength;
         } else if (event.event === "Progress") {
-          const progress = Math.round(
-            (event.data.chunkLength / (update.downloadContentLength || 1)) * 100
-          );
+          downloadedBytes += event.data.chunkLength;
+          const progress =
+            totalBytes > 0
+              ? Math.round((downloadedBytes / totalBytes) * 100)
+              : 0;
           setState((s) => ({ ...s, progress }));
           toast.loading("Downloading update...", {
             id: toastId,
