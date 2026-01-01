@@ -8,9 +8,9 @@ export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"];
  * Convert a Uint8Array to a data URL string.
  */
 export function fileToDataUrl(data: Uint8Array): Promise<string> {
-  const blob = new Blob([
-    data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
-  ]);
+  // Create a new Uint8Array copy to ensure we have a proper ArrayBuffer (not SharedArrayBuffer)
+  const copy = new Uint8Array(data);
+  const blob = new Blob([copy]);
   return new Promise<string>((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
