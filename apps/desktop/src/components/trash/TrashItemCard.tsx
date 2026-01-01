@@ -59,7 +59,7 @@ export function TrashItemCard({
     <div
       className={cn(
         "group relative overflow-hidden rounded-lg border bg-card transition-all",
-        isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
+        isSelected ? "border-primary ring-2 ring-primary" : "border-border"
       )}
       data-trash-id={item.id}
       onClick={() => onClick(item)}
