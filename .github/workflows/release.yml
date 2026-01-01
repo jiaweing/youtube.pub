@@ -20,9 +20,12 @@ jobs:
     outputs:
       release_id: ${{ steps.create-release.outputs.id }}
       release_upload_url: ${{ steps.create-release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get version
         id: get_version
@@ -33,15 +36,48 @@ jobs:
             echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get previous tag
+        id: prev_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+          REPO="${{ github.repository }}"
+          
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+          
+          if [ -n "$PREV_TAG" ]; then
+            # Get commits between previous tag and current
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" >> changelog.md
+          else
+            # First release - get all commits
+            git log --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))" >> changelog.md
+          fi
+          
+          echo "" >> changelog.md
+          echo "" >> changelog.md
+          
+          if [ -n "$PREV_TAG" ]; then
+            echo "**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}" >> changelog.md
+          fi
+          
+          cat changelog.md
+
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
+          body_path: changelog.md
           draft: true
           prerelease: false
-          generate_release_notes: true
 
   build-tauri:
     needs: create-release
@@ -78,9 +114,14 @@ jobs:
           bun-version: latest
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -117,5 +158,5 @@ jobs:
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ needs.create-release.outputs.version }}
           draft: false
