@@ -82,9 +82,16 @@ jobs:
         id: tag_message
         shell: bash
         run: |
-          # Get the tag message (annotation) for the current tag
-          TAG_MSG=$(git tag -l --format='%(contents:subject)' ${{ github.ref_name }} 2>/dev/null || echo "")
-          echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
+          # Get the tag annotation message (not the commit message)
+          # For annotated tags, this gets the message; for lightweight tags, it's empty
+          TAG_MSG=$(git for-each-ref refs/tags/${{ github.ref_name }} --format='%(contents:subject)' 2>/dev/null | head -1)
+
+          # If empty, the tag might be lightweight - leave message blank
+          if [ -z "$TAG_MSG" ]; then
+            echo "message=" >> $GITHUB_OUTPUT
+          else
+            echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate changelog
         id: changelog
@@ -189,7 +196,7 @@ jobs:
           releaseName: "youtube.pub ${{ github.ref_name }}${{ steps.tag_message.outputs.message && format(' - {0}', steps.tag_message.outputs.message) || '' }}"
           releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'nightly') || contains(github.ref_name, 'rc') }}
           args: ${{ matrix.args }}
 
       - name: Generate checksums

@@ -1,0 +1,150 @@
+name: Update Release Notes
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Tag to update release notes for (e.g., v1.0.0)"
+                required: true
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    update-notes:
+        name: Update Release Notes
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Get tag message
+              id: tag_message
+              run: |
+                  git fetch --tags --force
+                  TAG_MSG=$(git for-each-ref refs/tags/${{ inputs.tag }} --format='%(contents:subject)' 2>/dev/null | head -1)
+                  echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
+
+            - name: Get previous tag
+              id: prev_tag
+              run: |
+                  PREV_TAG=$(git describe --tags --abbrev=0 ${{ inputs.tag }}^ 2>/dev/null || echo "")
+                  echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+            - name: Generate changelog
+              id: changelog
+              run: |
+                  VERSION="${{ inputs.tag }}"
+                  PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+                  REPO="${{ github.repository }}"
+
+                  # Get commits
+                  if [ -n "$PREV_TAG" ]; then
+                    COMMITS=$(git log ${PREV_TAG}..${VERSION} --pretty=format:"%s|%h|%H")
+                  else
+                    COMMITS=$(git log ${VERSION} --pretty=format:"%s|%h|%H")
+                  fi
+
+                  # Initialize sections
+                  FEATURES=""
+                  FIXES=""
+                  CHORES=""
+                  OTHER=""
+
+                  # Parse commits into sections
+                  while IFS= read -r line; do
+                    [ -z "$line" ] && continue
+                    
+                    MSG=$(echo "$line" | cut -d'|' -f1)
+                    SHORT_HASH=$(echo "$line" | cut -d'|' -f2)
+                    FULL_HASH=$(echo "$line" | cut -d'|' -f3)
+                    
+                    LINK="- ${MSG} ([${SHORT_HASH}](https://github.com/${REPO}/commit/${FULL_HASH}))"
+                    
+                    if [[ "$MSG" == feat:* ]] || [[ "$MSG" == feat\(* ]]; then
+                      FEATURES="${FEATURES}${LINK}"$'\n'
+                    elif [[ "$MSG" == fix:* ]] || [[ "$MSG" == fix\(* ]]; then
+                      FIXES="${FIXES}${LINK}"$'\n'
+                    elif [[ "$MSG" == chore:* ]] || [[ "$MSG" == chore\(* ]] || [[ "$MSG" == refactor:* ]] || [[ "$MSG" == refactor\(* ]]; then
+                      CHORES="${CHORES}${LINK}"$'\n'
+                    else
+                      OTHER="${OTHER}${LINK}"$'\n'
+                    fi
+                  done <<< "$COMMITS"
+
+                  # Build changelog
+                  {
+                    echo "body<<EOF"
+                    echo "## What's Changed"
+                    echo ""
+                    
+                    if [ -n "$FEATURES" ]; then
+                      echo "### Features"
+                      echo ""
+                      echo "$FEATURES"
+                    fi
+                    
+                    if [ -n "$FIXES" ]; then
+                      echo "### Bug Fixes"
+                      echo ""
+                      echo "$FIXES"
+                    fi
+                    
+                    if [ -n "$OTHER" ]; then
+                      echo "### Other Changes"
+                      echo ""
+                      echo "$OTHER"
+                    fi
+                    
+                    if [ -n "$CHORES" ]; then
+                      echo "### Maintenance"
+                      echo ""
+                      echo "$CHORES"
+                    fi
+                    
+                    if [ -n "$PREV_TAG" ]; then
+                      echo ""
+                      echo "**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}"
+                    fi
+                    
+                    echo ""
+                    echo "## Downloads"
+                    echo ""
+                    echo "| Platform | Download |"
+                    echo "|----------|----------|"
+                    echo "| macOS (Apple Silicon) | \`.dmg\` (arm64) |"
+                    echo "| macOS (Intel) | \`.dmg\` (x64) |"
+                    echo "| Windows | \`.exe\` / \`.msi\` installer |"
+                    echo "| Linux | \`.deb\` / \`.AppImage\` |"
+                    echo "EOF"
+                  } >> $GITHUB_OUTPUT
+
+            - name: Update release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${{ inputs.tag }}"
+                  TAG_MSG="${{ steps.tag_message.outputs.message }}"
+
+                  # Build release name
+                  if [ -n "$TAG_MSG" ]; then
+                    RELEASE_NAME="youtube.pub ${TAG} - ${TAG_MSG}"
+                  else
+                    RELEASE_NAME="youtube.pub ${TAG}"
+                  fi
+
+                  # Determine if prerelease
+                  if [[ "$TAG" == *beta* ]] || [[ "$TAG" == *alpha* ]] || [[ "$TAG" == *nightly* ]] || [[ "$TAG" == *rc* ]]; then
+                    PRERELEASE="--prerelease"
+                  else
+                    PRERELEASE=""
+                  fi
+
+                  # Update the release
+                  gh release edit "$TAG" \
+                    --title "$RELEASE_NAME" \
+                    --notes '${{ steps.changelog.outputs.body }}' \
+                    $PRERELEASE
