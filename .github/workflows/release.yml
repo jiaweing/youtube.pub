@@ -78,6 +78,14 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
+      - name: Get tag message
+        id: tag_message
+        shell: bash
+        run: |
+          # Get the tag message (annotation) for the current tag
+          TAG_MSG=$(git tag -l --format='%(contents:subject)' ${{ github.ref_name }} 2>/dev/null || echo "")
+          echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
+
       - name: Generate changelog
         id: changelog
         shell: bash
@@ -178,7 +186,7 @@ jobs:
           projectPath: apps/desktop
           tauriScript: bunx tauri
           tagName: ${{ github.ref_name }}
-          releaseName: "youtube.pub ${{ github.ref_name }}"
+          releaseName: "youtube.pub ${{ github.ref_name }}${{ steps.tag_message.outputs.message && format(' - {0}', steps.tag_message.outputs.message) || '' }}"
           releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
