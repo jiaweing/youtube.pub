@@ -82,16 +82,9 @@ jobs:
         id: tag_message
         shell: bash
         run: |
-          # Get the tag annotation message (not the commit message)
-          # For annotated tags, this gets the message; for lightweight tags, it's empty
+          git fetch --tags --force
           TAG_MSG=$(git for-each-ref refs/tags/${{ github.ref_name }} --format='%(contents:subject)' 2>/dev/null | head -1)
-
-          # If empty, the tag might be lightweight - leave message blank
-          if [ -z "$TAG_MSG" ]; then
-            echo "message=" >> $GITHUB_OUTPUT
-          else
-            echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
-          fi
+          echo "message=$TAG_MSG" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
         id: changelog
