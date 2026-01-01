@@ -85,26 +85,90 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/}"
           PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
           REPO="${{ github.repository }}"
-          
-          BODY="## What's Changed"$'\n\n'
-          
+
+          # Get commits
           if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
-            BODY+="$COMMITS"$'\n\n'
-            BODY+="**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}"
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h|%H")
           else
-            COMMITS=$(git log --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
-            BODY+="$COMMITS"
+            COMMITS=$(git log --pretty=format:"%s|%h|%H")
           fi
-          
-          # Escape for GitHub Actions output
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'%0A'}"
-          BODY="${BODY//$'\r'/'%0D'}"
-          
-          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+          # Initialize sections
+          FEATURES=""
+          FIXES=""
+          CHORES=""
+          OTHER=""
+
+          # Parse commits into sections
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            
+            MSG=$(echo "$line" | cut -d'|' -f1)
+            SHORT_HASH=$(echo "$line" | cut -d'|' -f2)
+            FULL_HASH=$(echo "$line" | cut -d'|' -f3)
+            
+            LINK="- ${MSG} ([${SHORT_HASH}](https://github.com/${REPO}/commit/${FULL_HASH}))"
+            
+            if [[ "$MSG" == feat:* ]] || [[ "$MSG" == feat\(* ]]; then
+              FEATURES="${FEATURES}${LINK}"$'\n'
+            elif [[ "$MSG" == fix:* ]] || [[ "$MSG" == fix\(* ]]; then
+              FIXES="${FIXES}${LINK}"$'\n'
+            elif [[ "$MSG" == chore:* ]] || [[ "$MSG" == chore\(* ]] || [[ "$MSG" == refactor:* ]] || [[ "$MSG" == refactor\(* ]]; then
+              CHORES="${CHORES}${LINK}"$'\n'
+            else
+              OTHER="${OTHER}${LINK}"$'\n'
+            fi
+          done <<< "$COMMITS"
+
+          # Build changelog using heredoc for multiline output
+          {
+            echo "body<<EOF"
+            echo "## What's Changed"
+            echo ""
+            
+            if [ -n "$FEATURES" ]; then
+              echo "### Features"
+              echo ""
+              echo "$FEATURES"
+            fi
+            
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes"
+              echo ""
+              echo "$FIXES"
+            fi
+            
+            if [ -n "$OTHER" ]; then
+              echo "### Other Changes"
+              echo ""
+              echo "$OTHER"
+            fi
+            
+            if [ -n "$CHORES" ]; then
+              echo "### Maintenance"
+              echo ""
+              echo "$CHORES"
+            fi
+            
+            if [ -n "$PREV_TAG" ]; then
+              echo ""
+              echo "**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${VERSION}"
+            fi
+            
+            echo ""
+            echo "## Downloads"
+            echo ""
+            echo "| Platform | Download |"
+            echo "|----------|----------|"
+            echo "| macOS (Apple Silicon) | \`.dmg\` (arm64) |"
+            echo "| macOS (Intel) | \`.dmg\` (x64) |"
+            echo "| Windows | \`.exe\` / \`.msi\` installer |"
+            echo "| Linux | \`.deb\` / \`.AppImage\` |"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Build and release
+        id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -115,17 +179,66 @@ jobs:
           tauriScript: bunx tauri
           tagName: ${{ github.ref_name }}
           releaseName: "youtube.pub ${{ github.ref_name }}"
-          releaseBody: |
-            ${{ steps.changelog.outputs.body }}
-
-            ## Downloads
-
-            | Platform | Download |
-            |----------|----------|
-            | macOS (Apple Silicon) | `.dmg` (arm64) |
-            | macOS (Intel) | `.dmg` (x64) |
-            | Windows | `.exe` / `.msi` installer |
-            | Linux | `.deb` / `.AppImage` |
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd apps/desktop/src-tauri/target
+
+          # Find the bundle directory based on target
+          if [ -n "${{ matrix.target }}" ]; then
+            BUNDLE_DIR="${{ matrix.target }}/release/bundle"
+          else
+            BUNDLE_DIR="release/bundle"
+          fi
+
+          echo "Looking for artifacts in $BUNDLE_DIR"
+
+          if [ -d "$BUNDLE_DIR" ]; then
+            cd "$BUNDLE_DIR"
+            
+            # Generate checksums for all release files
+            find . -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.deb" -o -name "*.AppImage" -o -name "*.tar.gz" \) | while read file; do
+              filename=$(basename "$file")
+              
+              # Generate SHA256
+              if command -v sha256sum &> /dev/null; then
+                sha256sum "$file" | cut -d' ' -f1 > "${file}.sha256"
+              elif command -v shasum &> /dev/null; then
+                shasum -a 256 "$file" | cut -d' ' -f1 > "${file}.sha256"
+              fi
+              
+              echo "Generated checksum for $filename"
+            done
+            
+            # List generated files
+            find . -name "*.sha256" -type f
+          fi
+
+      - name: Upload checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd apps/desktop/src-tauri/target
+
+          if [ -n "${{ matrix.target }}" ]; then
+            BUNDLE_DIR="${{ matrix.target }}/release/bundle"
+          else
+            BUNDLE_DIR="release/bundle"
+          fi
+
+          if [ -d "$BUNDLE_DIR" ]; then
+            cd "$BUNDLE_DIR"
+            
+            # Upload all checksum files
+            find . -name "*.sha256" -type f | while read file; do
+              filename=$(basename "$file")
+              echo "Uploading $filename"
+              gh release upload "${{ github.ref_name }}" "$file" --clobber || true
+            done
+          fi
