@@ -228,7 +228,7 @@ export function BottomToolbar({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Move {selectedIds.size} items to trash?
+              Move {selectedIds.size} items to trash
             </AlertDialogTitle>
             <AlertDialogDescription>
               These items will be moved to trash. You can restore them within 30

@@ -1,4 +1,4 @@
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,8 +31,7 @@ export function RestoreAllDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <RotateCcw className="size-5" />
-            Restore All Items?
+            Restore everything
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will restore all {itemCount} items back to your gallery.
@@ -76,7 +75,7 @@ export function EmptyTrashDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            Empty Trash?
+            Empty Trash
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete all {itemCount} items in the trash.
@@ -162,7 +161,7 @@ export function DeleteSelectedDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            Permanently delete {selectedCount} items?
+            Permanently delete {selectedCount} items
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete {selectedCount} selected{" "}

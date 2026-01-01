@@ -11,7 +11,7 @@ import {
   RestoreAllDialog,
 } from "@/components/trash/TrashDialogs";
 import { TrashItemCard } from "@/components/trash/TrashItemCard";
-import { TrashToolbar } from "@/components/trash/TrashToolbar";
+import { TrashToolbar } from "@/components/trash/trash-toolbar";
 import { Button } from "@/components/ui/button";
 import { useDragSelection } from "@/hooks/use-drag-selection";
 import { useGalleryStore } from "@/stores/use-gallery-store";
@@ -84,35 +84,6 @@ export function TrashPage({ onClose }: TrashPageProps) {
     },
     [isSelectionMode, toggleSelection]
   );
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (!isSelectionMode) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Delete selected items
-      if (
-        (e.key === "Delete" || e.key === "Backspace") &&
-        selectedIds.size > 0
-      ) {
-        e.preventDefault();
-        setDeleteSelectedDialogOpen(true);
-      }
-      // Escape - exit selection mode
-      if (e.key === "Escape") {
-        e.preventDefault();
-        exitSelectionMode();
-      }
-      // Ctrl+A - select all
-      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
-        e.preventDefault();
-        setSelectedIds(new Set(trashItems.map((item) => item.id)));
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSelectionMode, selectedIds.size, exitSelectionMode, trashItems]);
 
   const handleRestore = useCallback(
     async (item: TrashItem) => {
@@ -213,6 +184,66 @@ export function TrashPage({ onClose }: TrashPageProps) {
       setIsProcessing(false);
     }
   }, [emptyTrash]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Shortcuts that work in selection mode only
+      if (isSelectionMode) {
+        // Delete selected items
+        if (
+          (e.key === "Delete" || e.key === "Backspace") &&
+          selectedIds.size > 0
+        ) {
+          e.preventDefault();
+          setDeleteSelectedDialogOpen(true);
+        }
+        // Escape - exit selection mode
+        if (e.key === "Escape") {
+          e.preventDefault();
+          exitSelectionMode();
+        }
+        // Ctrl+A - select all
+        if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+          e.preventDefault();
+          setSelectedIds(new Set(trashItems.map((item) => item.id)));
+        }
+        // Ctrl+E - restore selected
+        if (
+          (e.ctrlKey || e.metaKey) &&
+          e.key === "e" &&
+          !e.shiftKey &&
+          selectedIds.size > 0
+        ) {
+          e.preventDefault();
+          handleRestoreSelected();
+        }
+      }
+
+      // Shortcuts that work without selection mode (for the whole trash)
+      if (trashItems.length > 0) {
+        // Ctrl+Shift+E - restore all
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "E") {
+          e.preventDefault();
+          setRestoreAllDialogOpen(true);
+        }
+        // Ctrl+Shift+D - empty trash
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
+          e.preventDefault();
+          setEmptyTrashDialogOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isSelectionMode,
+    selectedIds,
+    exitSelectionMode,
+    trashItems,
+    handleRestoreSelected,
+  ]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
