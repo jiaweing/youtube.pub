@@ -37,6 +37,7 @@ export function TrashToolbar({
         <div className="flex flex-1 items-center justify-center gap-4">
           <div className="flex items-center gap-2">
             <Button
+              aria-label="Clear Selection"
               onClick={onExitSelectionMode}
               size="icon-sm"
               title="Clear selection"
@@ -123,7 +124,12 @@ export function TrashToolbar({
                 <div className="h-4 w-px bg-border" />
               </>
             )}
-            <Button onClick={onEnterSelectionMode} size="sm" variant="ghost">
+            <Button
+              aria-label="Enter Selection Mode"
+              onClick={onEnterSelectionMode}
+              size="sm"
+              variant="ghost"
+            >
               Select
             </Button>
           </div>

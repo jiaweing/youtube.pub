@@ -55,12 +55,61 @@ describe("Gallery Page", function () {
     expect(toolbar).to.exist;
   });
 
-  it("should have view mode toggle buttons", async () => {
+  it("should have view mode toggle buttons and switch modes", async () => {
     const driver = getDriver();
-    // The toolbar should have buttons for different view modes (3, 4, 5 columns, row)
-    const buttons = await driver.findElements(By.css("button"));
-    // There should be multiple buttons in the app
-    expect(buttons.length).to.be.greaterThan(0);
+    // Buttons are identifed by title in ViewModeButtons.tsx: "3x3 Grid", "4x4 Grid", etc.
+    const mode3Btn = await driver.findElement(
+      By.css('button[title="3x3 Grid"]')
+    );
+    const mode4Btn = await driver.findElement(
+      By.css('button[title="4x4 Grid"]')
+    );
+
+    expect(mode3Btn).to.exist;
+    expect(mode4Btn).to.exist;
+
+    // Click 3x3 and verify grid class
+    await mode3Btn.click();
+    await driver.wait(until.elementLocated(By.css(".grid-cols-3")), 2000);
+    const grid3 = await driver.findElements(By.css(".grid-cols-3"));
+    expect(grid3.length).to.be.greaterThan(0);
+
+    // Switch back to 4x4
+    await mode4Btn.click();
+    await driver.wait(until.elementLocated(By.css(".grid-cols-4")), 2000);
+    const grid4 = await driver.findElements(By.css(".grid-cols-4"));
+    expect(grid4.length).to.be.greaterThan(0);
+  });
+
+  it("should allow typing in the search bar", async () => {
+    const driver = getDriver();
+    const searchInput = await driver.findElement(
+      By.css('input[placeholder="Search"]')
+    );
+    await searchInput.sendKeys("Test Search");
+    const value = await searchInput.getAttribute("value");
+    expect(value).to.equal("Test Search");
+
+    // Clear it for future tests
+    await searchInput.clear();
+  });
+
+  it("should open context menu on right click", async () => {
+    const driver = getDriver();
+    const gridContainer = await driver.findElement(By.css(".flex.h-screen"));
+
+    // Right click on the grid background
+    await driver.actions().contextClick(gridContainer).perform();
+
+    // Check for context menu items (e.g., "Upload Photo")
+    const menuItem = await driver.wait(
+      until.elementLocated(By.xpath("//*[contains(text(), 'Upload Photo')]")),
+      2000
+    );
+    expect(menuItem).to.exist;
+
+    // Close context menu by clicking elsewhere (or escape)
+    await driver.actions().sendKeys("\uE00C").perform(); // Escape
   });
 
   it("should open video extractor when clicking add button", async () => {

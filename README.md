@@ -1,6 +1,20 @@
-# youtube.pub
+<table width="100%">
+  <tr>
+    <td align="center" width="120">
+      <img src="apps/desktop/app-icon.png" alt="Logo" width="100" style="border-radius: 20%;"/>
+    </td>
+    <td align="right">
+      <h1>youtube.pub</h1>
+      <h3 style="margin-top: -10px;">Everything you need to make great YouTube thumbnails</h3>
+    </td>
+  </tr>
+</table>
 
-A minimal desktop application for creating YouTube thumbnails. Extract frames from videos, edit with layers, remove backgrounds with AI, generate images with Gemini, and export in multiple formats.
+Extract frames from videos, edit with layers, remove backgrounds with AI, generate images with Gemini, and export in multiple formats.
+
+[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/jiaweing/youtube.pub/releases/latest)
+[![macOS](https://img.shields.io/badge/macOS-Download-white?logo=apple)](https://github.com/jiaweing/youtube.pub/releases/latest)
+[![Linux](https://img.shields.io/badge/Linux-Download-orange?logo=linux)](https://github.com/jiaweing/youtube.pub/releases/latest)
 
 ## Features
 
@@ -25,7 +39,7 @@ A minimal desktop application for creating YouTube thumbnails. Extract frames fr
 
 ### AI Features
 - Background removal powered by imgly
-- Gemini image generation with before/after comparison
+- Gemini image generation (Bring Your Own Key)
 - Generate multiple image variations at once
 - Save as new layer or to gallery
 
@@ -41,14 +55,14 @@ A minimal desktop application for creating YouTube thumbnails. Extract frames fr
 
 ## Tech Stack
 
-- Tauri v2 - Rust-based desktop framework
-- React 19 - UI framework
-- Vite - Build tool
-- TailwindCSS v4 - Styling
-- shadcn/ui - Component library
-- Zustand - State management
-- SQLite - Local database for metadata
-- Stronghold - Secure API key storage
+- [Tauri v2](https://v2.tauri.app)
+- [React 19](https://react.dev)
+- [Vite](https://vitejs.dev)
+- [TailwindCSS v4](https://tailwindcss.com)
+- [shadcn/ui](https://ui.shadcn.com)
+- [Zustand](https://zustand-demo.pmnd.rs)
+- [SQLite](https://www.sqlite.org)
+- [Stronghold](https://plugins.tauri.app/plugins/stronghold)
 
 ## Getting Started
 

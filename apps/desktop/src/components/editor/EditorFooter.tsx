@@ -60,7 +60,12 @@ export function EditorFooter({
 
       {/* Zoom controls */}
       <div className="flex items-center gap-0.5 rounded-md px-0.5">
-        <Button onClick={onZoomOut} size="icon-sm" variant="ghost">
+        <Button
+          aria-label="Zoom Out"
+          onClick={onZoomOut}
+          size="icon-sm"
+          variant="ghost"
+        >
           <Minus className="size-3" />
         </Button>
         <Button
@@ -71,7 +76,12 @@ export function EditorFooter({
         >
           {Math.round(zoom * 100)}%
         </Button>
-        <Button onClick={onZoomIn} size="icon-sm" variant="ghost">
+        <Button
+          aria-label="Zoom In"
+          onClick={onZoomIn}
+          size="icon-sm"
+          variant="ghost"
+        >
           <Plus className="size-3" />
         </Button>
       </div>

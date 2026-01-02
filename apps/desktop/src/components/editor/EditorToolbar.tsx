@@ -82,6 +82,7 @@ export function EditorToolbar({
     <div className="flex w-12 shrink-0 flex-col items-center gap-1 border-border border-r bg-background py-2">
       <Tooltip>
         <TooltipTrigger
+          aria-label="Select Tool"
           className={buttonVariants({
             size: "icon-sm",
             variant: activeTool === "select" ? "secondary" : "ghost",
@@ -94,6 +95,7 @@ export function EditorToolbar({
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
+          aria-label="Add Text"
           className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
           onClick={handleAddText}
         >
@@ -103,6 +105,7 @@ export function EditorToolbar({
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
+          aria-label="Add Rectangle"
           className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
           onClick={() => handleAddShape("rect")}
         >
@@ -112,6 +115,7 @@ export function EditorToolbar({
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
+          aria-label="Add Ellipse"
           className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
           onClick={() => handleAddShape("ellipse")}
         >

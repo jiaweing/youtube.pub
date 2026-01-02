@@ -74,7 +74,40 @@ describe("Trash Page", function () {
       )
     );
 
-    // There should be some buttons for navigation
     expect(closeButtons.length).to.be.greaterThanOrEqual(0);
+  });
+
+  it("should toggle selection mode", async () => {
+    const driver = getDriver();
+
+    // Find "Select" button using aria-label
+    // Note: If trash is empty, this button is still visible
+    const selectBtn = await driver.findElement(
+      By.css('button[aria-label="Enter Selection Mode"]')
+    );
+    expect(selectBtn).to.exist;
+
+    await selectBtn.click();
+    await driver.sleep(200);
+
+    // Verify "Clear Selection" button appears
+    const clearBtn = await driver.wait(
+      until.elementLocated(By.css('button[aria-label="Clear Selection"]')),
+      2000
+    );
+    expect(clearBtn).to.exist;
+
+    // Click clear to exit selection mode
+    await clearBtn.click();
+    await driver.sleep(200);
+
+    // Verify Select button is back (or Clear button is gone)
+    // Finding element that might be gone is tricky with webdriver 'findElement' which throws
+    // So we invoke verify that Select button is visible again
+    const selectBtnAgain = await driver.wait(
+      until.elementLocated(By.css('button[aria-label="Enter Selection Mode"]')),
+      2000
+    );
+    expect(selectBtnAgain).to.exist;
   });
 });
