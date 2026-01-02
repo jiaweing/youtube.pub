@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getDb } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import {
   deleteFromTrash,
   loadTrashPreview,
@@ -62,7 +63,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
 
   moveToTrash: async (item) => {
     const deletedAt = Date.now();
-    console.log("[Trash] Moving to trash:", item.name);
+    logger.info({ itemName: item.name }, "[Trash] Moving to trash");
 
     // Move files to trash directory
     await moveFilesToTrash(item.id);
@@ -95,9 +96,9 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
           item.canvasHeight || null,
         ]
       );
-      console.log("[Trash] Item moved to trash:", item.id);
+      logger.info({ itemId: item.id }, "[Trash] Item moved to trash");
     } catch (error) {
-      console.error("[Trash] Failed to move to trash:", error);
+      logger.error({ err: error }, "[Trash] Failed to move to trash");
     }
   },
 
@@ -107,7 +108,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
     }
 
     const deletedAt = Date.now();
-    console.log("[Trash] Batch moving", items.length, "items to trash");
+    logger.info({ count: items.length }, "[Trash] Batch moving items to trash");
 
     // Parallel file moves
     await Promise.all(items.map((item) => moveFilesToTrash(item.id)));
@@ -158,12 +159,12 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      console.log("[Trash] Batch move completed:", trashItems.length);
+      logger.info({ count: trashItems.length }, "[Trash] Batch move completed");
     } catch (error) {
-      console.error("[Trash] Failed to batch move:", error);
+      logger.error({ err: error }, "[Trash] Failed to batch move");
 
       // Rollback files
-      console.log("[Trash] Rolling back file moves...");
+      logger.info("[Trash] Rolling back file moves...");
       await Promise.all(items.map((item) => restoreFilesFromTrash(item.id)));
 
       // Rollback state
@@ -182,7 +183,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
       return null;
     }
 
-    console.log("[Trash] Restoring from trash:", item.name);
+    logger.info({ itemName: item.name }, "[Trash] Restoring from trash");
 
     // Move files back from trash
     await restoreFilesFromTrash(id);
@@ -199,9 +200,9 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
     try {
       const database = await getDb();
       await database.execute("DELETE FROM trash WHERE id = $1", [id]);
-      console.log("[Trash] Item restored:", id);
+      logger.info({ itemId: id }, "[Trash] Item restored");
     } catch (error) {
-      console.error("[Trash] Failed to restore:", error);
+      logger.error({ err: error }, "[Trash] Failed to restore");
     }
 
     return item;
@@ -215,7 +216,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
     const idsSet = new Set(ids);
     const items = get().trashItems.filter((t) => idsSet.has(t.id));
 
-    console.log("[Trash] Batch restoring", items.length, "items");
+    logger.info({ count: items.length }, "[Trash] Batch restoring items");
 
     // Parallel file moves
     await Promise.all(items.map((item) => restoreFilesFromTrash(item.id)));
@@ -245,9 +246,9 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      console.log("[Trash] Batch restore completed:", items.length);
+      logger.info({ count: items.length }, "[Trash] Batch restore completed");
     } catch (error) {
-      console.error("[Trash] Failed to batch restore:", error);
+      logger.error({ err: error }, "[Trash] Failed to batch restore");
       throw error;
     }
 
@@ -255,7 +256,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
   },
 
   deletePermanently: async (id) => {
-    console.log("[Trash] Permanently deleting:", id);
+    logger.info({ itemId: id }, "[Trash] Permanently deleting");
 
     // Delete files from trash directory
     await deleteFromTrash(id);
@@ -273,7 +274,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
       const database = await getDb();
       await database.execute("DELETE FROM trash WHERE id = $1", [id]);
     } catch (error) {
-      console.error("[Trash] Failed to delete permanently:", error);
+      logger.error({ err: error }, "[Trash] Failed to delete permanently");
     }
   },
 
@@ -283,7 +284,10 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
     }
 
     const idsSet = new Set(ids);
-    console.log("[Trash] Batch permanently deleting", ids.length, "items");
+    logger.info(
+      { count: ids.length },
+      "[Trash] Batch permanently deleting items"
+    );
 
     // Parallel file deletes
     await Promise.all(ids.map((id) => deleteFromTrash(id)));
@@ -313,16 +317,22 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
         );
       }
 
-      console.log("[Trash] Batch permanent delete completed:", ids.length);
+      logger.info(
+        { count: ids.length },
+        "[Trash] Batch permanent delete completed"
+      );
     } catch (error) {
-      console.error("[Trash] Failed to batch delete permanently:", error);
+      logger.error(
+        { err: error },
+        "[Trash] Failed to batch delete permanently"
+      );
       throw error;
     }
   },
 
   emptyTrash: async () => {
     const items = get().trashItems;
-    console.log("[Trash] Emptying trash:", items.length, "items");
+    logger.info({ count: items.length }, "[Trash] Emptying trash items");
 
     for (const item of items) {
       await deleteFromTrash(item.id);
@@ -333,9 +343,9 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
     try {
       const database = await getDb();
       await database.execute("DELETE FROM trash");
-      console.log("[Trash] Trash emptied");
+      logger.info("[Trash] Trash emptied");
     } catch (error) {
-      console.error("[Trash] Failed to empty trash:", error);
+      logger.error({ err: error }, "[Trash] Failed to empty trash");
     }
   },
 
@@ -349,7 +359,10 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
       return;
     }
 
-    console.log("[Trash] Cleaning up", expiredItems.length, "expired items");
+    logger.info(
+      { count: expiredItems.length },
+      "[Trash] Cleaning up expired items"
+    );
 
     for (const item of expiredItems) {
       await deleteFromTrash(item.id);
@@ -373,26 +386,26 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
       await database.execute("DELETE FROM trash WHERE deletedAt < $1", [
         cutoff,
       ]);
-      console.log("[Trash] Cleanup completed");
+      logger.info("[Trash] Cleanup completed");
     } catch (error) {
-      console.error("[Trash] Failed to cleanup expired:", error);
+      logger.error({ err: error }, "[Trash] Failed to cleanup expired");
     }
   },
 
   loadFromDb: async () => {
-    console.log("[Trash] Loading from DB...");
+    logger.info("[Trash] Loading from DB...");
     try {
       const database = await getDb();
       const result = await database.select<TrashItem[]>(
         "SELECT id, name, deletedAt, originalCreatedAt, originalUpdatedAt, canvasWidth, canvasHeight FROM trash ORDER BY deletedAt DESC"
       );
-      console.log("[Trash] Loaded", result.length, "items");
+      logger.info({ count: result.length }, "[Trash] Loaded items");
       set({ trashItems: result, isLoaded: true });
 
       // Auto-cleanup expired items
       get().cleanupExpired();
     } catch (error) {
-      console.error("[Trash] Failed to load:", error);
+      logger.error({ err: error }, "[Trash] Failed to load");
       set({ isLoaded: true });
     }
   },

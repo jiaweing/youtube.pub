@@ -7,6 +7,7 @@ import {
   rename,
   writeFile,
 } from "@tauri-apps/plugin-fs";
+import { logger } from "@/lib/logger";
 
 const THUMBNAILS_DIR = "thumbnails";
 const PREVIEW_SIZE = 300; // Preview thumbnail max dimension in pixels
@@ -141,9 +142,9 @@ export async function loadPreview(id: string): Promise<string | null> {
     const bytes = await readFile(previewPath);
     return bytesToDataUrl(bytes, "image/webp");
   } catch (error) {
-    console.error(
-      `[ThumbnailStorage] Failed to load preview for ${id}:`,
-      error
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to load preview"
     );
     return null;
   }
@@ -164,9 +165,9 @@ export async function loadFullImage(id: string): Promise<string | null> {
     const bytes = await readFile(fullPath);
     return bytesToDataUrl(bytes, "image/webp");
   } catch (error) {
-    console.error(
-      `[ThumbnailStorage] Failed to load full image for ${id}:`,
-      error
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to load full image"
     );
     return null;
   }
@@ -205,7 +206,10 @@ export async function loadLayerData(id: string): Promise<unknown[] | null> {
     const json = decoder.decode(bytes);
     return JSON.parse(json);
   } catch (error) {
-    console.error(`[ThumbnailStorage] Failed to load layers for ${id}:`, error);
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to load layers"
+    );
     return null;
   }
 }
@@ -220,7 +224,10 @@ export async function deleteThumbnailFiles(id: string): Promise<void> {
       await remove(thumbDir, { recursive: true });
     }
   } catch (error) {
-    console.error(`[ThumbnailStorage] Failed to delete ${id}:`, error);
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to delete"
+    );
   }
 }
 
@@ -266,7 +273,10 @@ export async function moveFilesToTrash(id: string): Promise<void> {
     const trashDir = await getTrashDir(id);
 
     if (!(await exists(thumbDir))) {
-      console.warn(`[ThumbnailStorage] Source dir not found for ${id}`);
+      logger.warn(
+        { thumbnailId: id },
+        "[ThumbnailStorage] Source dir not found"
+      );
       return;
     }
 
@@ -276,9 +286,12 @@ export async function moveFilesToTrash(id: string): Promise<void> {
 
     // Use rename for instant move (no read/write needed)
     await rename(thumbDir, trashDir);
-    console.log(`[ThumbnailStorage] Moved ${id} to trash`);
+    logger.info({ thumbnailId: id }, "[ThumbnailStorage] Moved to trash");
   } catch (error) {
-    console.error(`[ThumbnailStorage] Failed to move ${id} to trash:`, error);
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to move to trash"
+    );
   }
 }
 
@@ -291,7 +304,10 @@ export async function restoreFilesFromTrash(id: string): Promise<void> {
     const thumbDir = await getThumbDir(id);
 
     if (!(await exists(trashDir))) {
-      console.warn(`[ThumbnailStorage] Trash dir not found for ${id}`);
+      logger.warn(
+        { thumbnailId: id },
+        "[ThumbnailStorage] Trash dir not found"
+      );
       return;
     }
 
@@ -301,11 +317,11 @@ export async function restoreFilesFromTrash(id: string): Promise<void> {
 
     // Use rename for instant move
     await rename(trashDir, thumbDir);
-    console.log(`[ThumbnailStorage] Restored ${id} from trash`);
+    logger.info({ thumbnailId: id }, "[ThumbnailStorage] Restored from trash");
   } catch (error) {
-    console.error(
-      `[ThumbnailStorage] Failed to restore ${id} from trash:`,
-      error
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to restore from trash"
     );
   }
 }
@@ -318,12 +334,16 @@ export async function deleteFromTrash(id: string): Promise<void> {
     const trashDir = await getTrashDir(id);
     if (await exists(trashDir)) {
       await remove(trashDir, { recursive: true });
-      console.log(`[ThumbnailStorage] Permanently deleted ${id} from trash`);
+      await remove(trashDir, { recursive: true });
+      logger.info(
+        { thumbnailId: id },
+        "[ThumbnailStorage] Permanently deleted from trash"
+      );
     }
   } catch (error) {
-    console.error(
-      `[ThumbnailStorage] Failed to delete ${id} from trash:`,
-      error
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to delete from trash"
     );
   }
 }
@@ -343,9 +363,9 @@ export async function loadTrashPreview(id: string): Promise<string | null> {
     const bytes = await readFile(previewPath);
     return bytesToDataUrl(bytes, "image/webp");
   } catch (error) {
-    console.error(
-      `[ThumbnailStorage] Failed to load trash preview for ${id}:`,
-      error
+    logger.error(
+      { err: error, thumbnailId: id },
+      "[ThumbnailStorage] Failed to load trash preview"
     );
     return null;
   }

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getDb } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import {
   loadFullImage,
   loadLayerData,
@@ -112,7 +113,7 @@ $;
 }
 `;
 
-    console.log("[Gallery] Adding thumbnail:", itemName);
+    logger.info({ itemName }, "[Gallery] Adding thumbnail");
 
     // Save image files (full + preview)
     const { previewUrl } = await saveThumbnail(id, dataUrl);
@@ -136,9 +137,9 @@ $;
         "INSERT INTO thumbnails (id, name, createdAt, updatedAt) VALUES ($1, $2, $3, $4)",
         [id, itemName, now, now]
       );
-      console.log("[Gallery] Thumbnail saved:", id);
+      logger.info({ thumbnailId: id }, "[Gallery] Thumbnail saved");
     } catch (error) {
-      console.error("[Gallery] Failed to save thumbnail:", error);
+      logger.error({ err: error }, "[Gallery] Failed to save thumbnail");
       set({ dbError: String(error) });
     }
 
@@ -151,12 +152,15 @@ $;
       return;
     }
 
-    console.log("[Gallery] Duplicating thumbnail:", original.name);
+    logger.info(
+      { originalName: original.name },
+      "[Gallery] Duplicating thumbnail"
+    );
 
     // Load full image from original
     const fullImage = await loadFullImage(id);
     if (!fullImage) {
-      console.error("[Gallery] Failed to load original image for duplication");
+      logger.error("[Gallery] Failed to load original image for duplication");
       return;
     }
 
@@ -204,9 +208,9 @@ Copy`,
           newItem.canvasHeight || null,
         ]
       );
-      console.log("[Gallery] Duplicate saved:", newId);
+      logger.info({ newId }, "[Gallery] Duplicate saved");
     } catch (error) {
-      console.error("[Gallery] Failed to duplicate thumbnail:", error);
+      logger.error({ err: error }, "[Gallery] Failed to duplicate thumbnail");
       set({ dbError: String(error) });
     }
   },
@@ -221,7 +225,10 @@ Copy`,
       return;
     }
 
-    console.log("[Gallery] Batch duplicating", originals.length, "thumbnails");
+    logger.info(
+      { count: originals.length },
+      "[Gallery] Batch duplicating thumbnails"
+    );
 
     const now = Date.now();
     const newPreviews = new Map<string, string>();
@@ -299,9 +306,12 @@ Copy`,
       }
 
       await database.execute("COMMIT");
-      console.log("[Gallery] Batch duplicates saved:", newItems.length);
+      logger.info(
+        { count: newItems.length },
+        "[Gallery] Batch duplicates saved"
+      );
     } catch (error) {
-      console.error("[Gallery] Failed to batch duplicate:", error);
+      logger.error({ err: error }, "[Gallery] Failed to batch duplicate");
       try {
         const database = await getDb();
         await database.execute("ROLLBACK");
@@ -320,12 +330,9 @@ Copy`,
   ) => {
     const projectId = id || crypto.randomUUID();
     const now = Date.now();
-    console.log(
-      "[Gallery] Saving project:",
-      name,
-      "with",
-      layers.length,
-      "layers"
+    logger.info(
+      { name, layerCount: layers.length },
+      "[Gallery] Saving project"
     );
 
     // Save image files
@@ -358,9 +365,9 @@ Copy`,
           "UPDATE thumbnails SET name = $1, canvasWidth = $2, canvasHeight = $3, updatedAt = $4 WHERE id = $5",
           [name, canvasWidth, canvasHeight, now, projectId]
         );
-        console.log("[Gallery] Project updated:", projectId);
+        logger.info({ projectId }, "[Gallery] Project updated");
       } catch (error) {
-        console.error("[Gallery] Failed to update project:", error);
+        logger.error({ err: error }, "[Gallery] Failed to update project");
         set({ dbError: String(error) });
       }
     } else {
@@ -385,9 +392,9 @@ Copy`,
           "INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight) VALUES ($1, $2, $3, $4, $5, $6)",
           [projectId, name, now, now, canvasWidth, canvasHeight]
         );
-        console.log("[Gallery] Project saved:", projectId);
+        logger.info({ projectId }, "[Gallery] Project saved");
       } catch (error) {
-        console.error("[Gallery] Failed to save project:", error);
+        logger.error({ err: error }, "[Gallery] Failed to save project");
         set({ dbError: String(error) });
       }
     }
@@ -409,9 +416,9 @@ Copy`,
         "UPDATE thumbnails SET name = $1, updatedAt = $2 WHERE id = $3",
         [name, now, id]
       );
-      console.log("[Gallery] Thumbnail name updated:", id);
+      logger.info({ thumbnailId: id }, "[Gallery] Thumbnail name updated");
     } catch (error) {
-      console.error("[Gallery] Failed to update name:", error);
+      logger.error({ err: error }, "[Gallery] Failed to update name");
       set({ dbError: String(error) });
     }
   },
@@ -436,7 +443,7 @@ Copy`,
         [now, id]
       );
     } catch (error) {
-      console.error("[Gallery] Failed to update thumbnail:", error);
+      logger.error({ err: error }, "[Gallery] Failed to update thumbnail");
       set({ dbError: String(error) });
     }
   },
@@ -471,7 +478,7 @@ Copy`,
       const database = await getDb();
       await database.execute("DELETE FROM thumbnails WHERE id = $1", [id]);
     } catch (error) {
-      console.error("[Gallery] Failed to delete:", error);
+      logger.error({ err: error }, "[Gallery] Failed to delete");
       set({ dbError: String(error) });
     }
   },
@@ -483,10 +490,9 @@ Copy`,
 
     const idsSet = new Set(ids);
     const thumbnailsToTrash = get().thumbnails.filter((t) => idsSet.has(t.id));
-    console.log(
-      "[Gallery] Moving",
-      thumbnailsToTrash.length,
-      "thumbnails to trash"
+    logger.info(
+      { count: thumbnailsToTrash.length },
+      "[Gallery] Moving thumbnails to trash"
     );
 
     // Move to trash
@@ -529,9 +535,12 @@ Copy`,
       }
 
       await database.execute("COMMIT");
-      console.log("[Gallery] Batch move to trash completed:", ids.length);
+      logger.info(
+        { count: ids.length },
+        "[Gallery] Batch move to trash completed"
+      );
     } catch (error) {
-      console.error("[Gallery] Failed to batch delete:", error);
+      logger.error({ err: error }, "[Gallery] Failed to batch delete");
       try {
         const database = await getDb();
         await database.execute("ROLLBACK");
@@ -541,7 +550,7 @@ Copy`,
   },
 
   restoreThumbnail: async (trashItem) => {
-    console.log("[Gallery] Restoring from trash:", trashItem.name);
+    logger.info({ itemName: trashItem.name }, "[Gallery] Restoring from trash");
 
     const restoredItem: ThumbnailItem = {
       id: trashItem.id,
@@ -569,29 +578,31 @@ Copy`,
           restoredItem.canvasHeight || null,
         ]
       );
-      console.log("[Gallery] Thumbnail restored:", restoredItem.id);
+      logger.info(
+        { thumbnailId: restoredItem.id },
+        "[Gallery] Thumbnail restored"
+      );
     } catch (error) {
-      console.error("[Gallery] Failed to restore thumbnail:", error);
+      logger.error({ err: error }, "[Gallery] Failed to restore thumbnail");
       set({ dbError: String(error) });
     }
   },
 
   loadFromDb: async () => {
-    console.log("[Gallery] Loading thumbnails from DB...");
+    logger.info("[Gallery] Loading thumbnails from DB...");
     try {
       const database = await getDb();
       // Only load metadata - NO image data!
       const result = await database.select<ThumbnailItem[]>(
         "SELECT id, name, createdAt, updatedAt, canvasWidth, canvasHeight FROM thumbnails ORDER BY updatedAt DESC"
       );
-      console.log(
-        "[Gallery] Loaded",
-        result.length,
-        "thumbnails (metadata only)"
+      logger.info(
+        { count: result.length },
+        "[Gallery] Loaded thumbnails (metadata only)"
       );
       set({ thumbnails: result, isLoaded: true, dbError: null });
     } catch (error) {
-      console.error("[Gallery] Failed to load:", error);
+      logger.error({ err: error }, "[Gallery] Failed to load");
       set({ isLoaded: true, dbError: String(error) });
     }
   },

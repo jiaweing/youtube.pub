@@ -1,19 +1,20 @@
 import Database from "@tauri-apps/plugin-sql";
+import { logger } from "@/lib/logger";
 
 let db: Database | null = null;
 let dbInitPromise: Promise<Database> | null = null;
 
 async function initDb(): Promise<Database> {
-  console.log("[DB] Initializing shared database...");
+  logger.info("[DB] Initializing shared database...");
   const database = await Database.load("sqlite:gallery.db");
-  console.log("[DB] Database connection established");
+  logger.info("[DB] Database connection established");
 
   // Enable WAL mode for better concurrency and performance
   await database.execute("PRAGMA journal_mode=WAL;");
   await database.execute("PRAGMA synchronous=NORMAL;"); // Faster, still safe in WAL mode
 
   // Create tables sequentially to avoid locking issues
-  console.log("[DB] Verifying schemas...");
+  logger.info("[DB] Verifying schemas...");
 
   // Gallery table
   await database.execute(`
@@ -40,7 +41,7 @@ async function initDb(): Promise<Database> {
     )
   `);
 
-  console.log("[DB] Tables verified");
+  logger.info("[DB] Tables verified");
   return database;
 }
 
