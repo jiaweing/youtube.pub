@@ -42,10 +42,18 @@ export function GridFooter() {
 }
 
 /**
+ * Header component with top padding for VirtuosoGrid.
+ */
+export function GridHeader() {
+  return <div className="col-span-full h-6" />;
+}
+
+/**
  * Default grid components configuration for VirtuosoGrid.
  */
 export const gridComponents = {
   List: GridList,
   Item: GridItem,
   Footer: GridFooter,
+  Header: GridHeader,
 };
