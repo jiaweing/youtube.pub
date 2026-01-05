@@ -22,5 +22,12 @@
       "!**/convex/_generated"
     ]
   },
-  "extends": ["ultracite/core", "ultracite/next", "ultracite/react"]
+  "extends": [
+    "ultracite/core",
+    "ultracite/next",
+    "ultracite/react",
+    "ultracite/biome/core",
+    "ultracite/biome/next",
+    "ultracite/biome/react"
+  ]
 }

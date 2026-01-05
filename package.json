@@ -20,7 +20,7 @@
   "type": "module",
   "scripts": {
     "check": "biome check --write .",
-    "prepare": "husky",
+    "prepare": "lefthook install",
     "ruler:apply": "bunx @intellectronica/ruler@latest apply --local-only",
     "dev": "turbo dev",
     "build": "turbo build",
@@ -36,17 +36,19 @@
     "@youtube.pub/env": "workspace:*"
   },
   "devDependencies": {
-    "turbo": "^2.6.3",
-    "@biomejs/biome": "2.3.10",
-    "ultracite": "6.5.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
-    "typescript": "^5",
+    "@biomejs/biome": "2.3.11",
     "@types/bun": "catalog:",
-    "@youtube.pub/config": "workspace:*"
+    "@youtube.pub/config": "workspace:*",
+    "husky": "^9.1.7",
+    "lefthook": "^2.0.13",
+    "lint-staged": "^16.2.7",
+    "turbo": "^2.6.3",
+    "typescript": "^5",
+    "ultracite": "7.0.8"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
+      "bun x ultracite fix",
       "bun x ultracite fix"
     ]
   },
