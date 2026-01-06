@@ -1,8 +1,7 @@
-import { Key, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Settings, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ViewMode } from "@/App";
-import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { AddMenu } from "@/components/toolbar/add-menu";
 import { SelectionToolbar } from "@/components/toolbar/selection-toolbar";
 import { SortMenu } from "@/components/toolbar/sort-menu";
@@ -27,6 +26,7 @@ interface BottomToolbarProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onAddVideoClick: () => void;
+  onSettingsClick: () => void;
   onTrashClick: () => void;
 }
 
@@ -34,9 +34,9 @@ export function BottomToolbar({
   viewMode,
   onViewModeChange,
   onAddVideoClick,
+  onSettingsClick,
   onTrashClick,
 }: BottomToolbarProps) {
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -213,13 +213,13 @@ export function BottomToolbar({
         {showDefaultToolbar && (
           <>
             <Button
-              aria-label="Gemini API Key"
-              onClick={() => setShowApiKeyDialog(true)}
+              aria-label="Settings"
+              onClick={onSettingsClick}
               size="icon-sm"
-              title="Gemini API Key"
+              title="Settings"
               variant="ghost"
             >
-              <Key className="size-4" />
+              <Settings className="size-4" />
             </Button>
             <AddMenu onAddVideoClick={onAddVideoClick} />
           </>
@@ -256,11 +256,6 @@ export function BottomToolbar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ApiKeyDialog
-        onOpenChange={setShowApiKeyDialog}
-        open={showApiKeyDialog}
-      />
     </header>
   );
 }

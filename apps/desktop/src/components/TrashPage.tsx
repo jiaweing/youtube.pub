@@ -258,16 +258,16 @@ export function TrashPage({ onClose }: TrashPageProps) {
           >
             <ArrowLeft className="size-4" />
           </Button>
-          <div className="flex items-center gap-2">
-            <Trash2 className="size-4" />
-            <span className="text-sm">Trash</span>
+          <span className="text-sm">
+            Trash
             {trashItems.length > 0 && (
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground">
+                {" "}
                 ({trashItems.length}{" "}
                 {trashItems.length === 1 ? "item" : "items"})
               </span>
             )}
-          </div>
+          </span>
         </div>
       </header>
 
