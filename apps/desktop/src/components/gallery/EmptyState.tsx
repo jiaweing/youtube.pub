@@ -8,12 +8,20 @@ interface EmptyStateProps {
   title: string;
   /** Description text */
   description: string;
-  /** Optional action button */
-  action?: {
-    label: string;
-    icon?: ReactNode;
-    onClick: () => void;
-  };
+  /** Optional action button or node */
+  action?:
+    | ReactNode
+    | {
+        label: string;
+        icon?: ReactNode;
+        onClick: () => void;
+      };
+}
+
+function isValidAction(
+  action: any
+): action is { label: string; icon?: ReactNode; onClick: () => void } {
+  return typeof action === "object" && action !== null && "onClick" in action;
 }
 
 /**
@@ -32,12 +40,15 @@ export function EmptyState({
         <p className="font-medium">{title}</p>
         <p className="mt-1 text-muted-foreground text-sm">{description}</p>
       </div>
-      {action && (
-        <Button onClick={action.onClick} variant="ghost">
-          {action.icon}
-          {action.label}
-        </Button>
-      )}
+      {action &&
+        (isValidAction(action) ? (
+          <Button onClick={action.onClick} variant="ghost">
+            {action.icon}
+            {action.label}
+          </Button>
+        ) : (
+          action
+        ))}
     </div>
   );
 }

@@ -1,19 +1,33 @@
-import { Image, Plus, Video } from "lucide-react";
+import { Image, LayoutTemplate, Plus, Video } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { openAndLoadImages } from "@/lib/image-file-utils";
 import { useGalleryStore } from "@/stores/use-gallery-store";
 
 interface AddMenuProps {
   onAddVideoClick: () => void;
+  onNewProjectClick: () => void;
+  trigger?: React.ReactNode;
+  className?: string;
 }
 
-export function AddMenu({ onAddVideoClick }: AddMenuProps) {
-  const [showMenu, setShowMenu] = useState(false);
+export function AddMenu({
+  onAddVideoClick,
+  onNewProjectClick,
+  trigger,
+  className,
+}: AddMenuProps) {
+  const [open, setOpen] = useState(false);
   const addThumbnail = useGalleryStore((s) => s.addThumbnail);
 
   const handleAddImage = useCallback(async () => {
-    setShowMenu(false);
+    setOpen(false);
     const images = await openAndLoadImages();
     for (const { dataUrl, fileName } of images) {
       addThumbnail(dataUrl, fileName);
@@ -21,48 +35,40 @@ export function AddMenu({ onAddVideoClick }: AddMenuProps) {
   }, [addThumbnail]);
 
   const handleAddVideo = useCallback(() => {
-    setShowMenu(false);
+    setOpen(false);
     onAddVideoClick();
   }, [onAddVideoClick]);
 
+  const handleNewProject = useCallback(() => {
+    setOpen(false);
+    onNewProjectClick();
+  }, [onNewProjectClick]);
+
   return (
-    <div className="relative">
-      <Button
-        aria-label="Add"
-        onClick={() => setShowMenu(!showMenu)}
-        size="icon-sm"
-      >
-        <Plus className="size-4" />
-      </Button>
-      {showMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowMenu(false)}
-            onKeyDown={() => {}}
-          />
-          <div className="absolute right-0 bottom-full z-50 mb-2 w-40 rounded-lg border border-border bg-card p-1 shadow-lg">
-            <Button
-              className="w-full justify-start"
-              onClick={handleAddImage}
-              size="sm"
-              variant="ghost"
-            >
-              <Image className="mr-2 size-4" />
-              Add Image
+    <div className={className}>
+      <DropdownMenu onOpenChange={setOpen} open={open}>
+        <DropdownMenuTrigger asChild>
+          {trigger || (
+            <Button aria-label="Add" size="icon-sm">
+              <Plus className="size-4" />
             </Button>
-            <Button
-              className="w-full justify-start"
-              onClick={handleAddVideo}
-              size="sm"
-              variant="ghost"
-            >
-              <Video className="mr-2 size-4" />
-              Upload Video
-            </Button>
-          </div>
-        </>
-      )}
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-max" side="top">
+          <DropdownMenuItem onClick={handleNewProject}>
+            <LayoutTemplate className="mr-2 size-4" />
+            New Project
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleAddImage}>
+            <Image className="mr-2 size-4" />
+            Add Image
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleAddVideo}>
+            <Video className="mr-2 size-4" />
+            Upload Video
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

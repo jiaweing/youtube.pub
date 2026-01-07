@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { CarouselGeneratorDialog } from "@/components/editor/CarouselGeneratorDialog";
 import { EditorFooter } from "@/components/editor/EditorFooter";
 import { EditorHeader } from "@/components/editor/EditorHeader";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { KonvaCanvas } from "@/components/editor/KonvaCanvas";
 import { LayersPanel } from "@/components/editor/LayersPanel";
+import { PageCarousel } from "@/components/editor/PageCarousel";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { GalleryPicker } from "@/components/GalleryPicker";
 import {
@@ -19,6 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ResizablePanel } from "@/components/ui/resizable-panel";
 import { VerticalResizablePanel } from "@/components/ui/vertical-resizable-panel";
+import { getGeminiApiKey } from "@/lib/gemini-store";
+import { generateCarouselContent } from "@/lib/gemini-text";
 import type { ImageLayer } from "@/stores/use-editor-store";
 import { useEditorStore } from "@/stores/use-editor-store";
 import {
@@ -89,14 +93,24 @@ export function ImageEditor({
 
     const loadProject = async () => {
       try {
-        const savedLayers = await loadLayerDataForId(thumbnail.id);
-        if (savedLayers && savedLayers.length > 0) {
-          for (const layer of savedLayers) {
-            useEditorStore.setState((state) => ({
-              layers: [...state.layers, layer as unknown as ImageLayer],
-            }));
-          }
-          useEditorStore.setState({ activeLayerId: savedLayers[0].id });
+        const savedData = await loadLayerDataForId(thumbnail.id);
+        if (savedData && savedData.length > 0) {
+          // Detect if it's new Page[] format or old Layer[] format
+          const isPageFormat = "layers" in savedData[0];
+          const pages = isPageFormat
+            ? (savedData as unknown as any[])
+            : [{ id: crypto.randomUUID(), layers: savedData }];
+
+          const initialLayers = pages[0].layers;
+
+          useEditorStore.setState({
+            pages,
+            activePageIndex: 0,
+            layers: initialLayers,
+            activeLayerId: initialLayers[0]?.id || null,
+            canvasWidth: thumbnail.canvasWidth || 1280,
+            canvasHeight: thumbnail.canvasHeight || 720,
+          });
           setCanvasSize({
             width: thumbnail.canvasWidth || 1280,
             height: thumbnail.canvasHeight || 720,
@@ -238,7 +252,8 @@ export function ImageEditor({
         previewDataUrl,
         layers as unknown as GalleryLayer[],
         canvasSize.width,
-        canvasSize.height
+        canvasSize.height,
+        { pages: useEditorStore.getState().pages }
       );
       toast.success("Project saved");
       setSavedHistoryIndex(useEditorStore.getState().historyIndex);
@@ -261,11 +276,31 @@ export function ImageEditor({
       previewDataUrl,
       layers as unknown as GalleryLayer[],
       canvasSize.width,
-      canvasSize.height
+      canvasSize.height,
+      { pages: useEditorStore.getState().pages }
     );
     setProjectId(newId);
     setProjectName(`${projectName} (Copy)`);
     toast.success("Saved as new project");
+  }, [saveProject, projectName, layers, canvasSize]);
+
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!exportRef.current) {
+      return;
+    }
+    const previewDataUrl = exportRef.current();
+    const newId = await saveProject(
+      null,
+      `${projectName} (Template)`,
+      previewDataUrl,
+      layers as unknown as GalleryLayer[],
+      canvasSize.width,
+      canvasSize.height,
+      { isTemplate: true, pages: useEditorStore.getState().pages }
+    );
+    setProjectId(newId);
+    setProjectName(`${projectName} (Template)`);
+    toast.success("Saved as template");
   }, [saveProject, projectName, layers, canvasSize]);
 
   // Keyboard shortcuts
@@ -308,6 +343,133 @@ export function ImageEditor({
 
   const effectiveScale = fitScale * zoom;
 
+  const handleGenerateCarousel = useCallback(
+    async (
+      topic: string,
+      count: number,
+      style: string,
+      mode: "full" | "template"
+    ) => {
+      const apiKey = await getGeminiApiKey();
+      if (!apiKey) {
+        toast.error("Please set your Gemini API key in Settings");
+        return;
+      }
+
+      setIsProcessing(true);
+      const toastId = toast.loading("Generating carousel with Gemini AI...");
+
+      try {
+        const slides = await generateCarouselContent(
+          apiKey,
+          topic,
+          count,
+          style
+        );
+
+        const state = useEditorStore.getState();
+        const isPage0Empty =
+          state.pages.length === 1 &&
+          (state.pages[0].layers.length === 0 ||
+            (state.pages[0].layers.length === 1 &&
+              state.pages[0].layers[0].name === "Background Layer"));
+
+        for (let i = 0; i < slides.length; i++) {
+          const slide = slides[i];
+          if (i === 0 && isPage0Empty) {
+            // Reuse page 0
+          } else {
+            useEditorStore.getState().addPage();
+          }
+
+          // Background Logic
+          const currentLayers = useEditorStore.getState().layers;
+          const bgLayer = currentLayers.find(
+            (l) => l.name === "Background Layer"
+          );
+
+          if (bgLayer) {
+            if (mode === "full") {
+              useEditorStore.getState().updateLayer(bgLayer.id, {
+                fill: slide.backgroundColor || "#ffffff",
+                width: canvasSize.width,
+                height: canvasSize.height,
+              });
+            }
+          } else {
+            useEditorStore.getState().addShapeLayer("rect");
+            const newBgId = useEditorStore.getState().activeLayerId;
+            if (newBgId) {
+              useEditorStore.getState().updateLayer(newBgId, {
+                x: 0,
+                y: 0,
+                width: canvasSize.width,
+                height: canvasSize.height,
+                fill:
+                  mode === "full"
+                    ? slide.backgroundColor || "#ffffff"
+                    : "#ffffff",
+                name: "Background Layer",
+                locked: true,
+              });
+            }
+          }
+
+          // Title
+          useEditorStore.getState().addTextLayer(slide.title);
+          const titleId = useEditorStore.getState().activeLayerId;
+          if (titleId) {
+            useEditorStore.getState().updateLayer(titleId, {
+              x: 50,
+              y: 100,
+              fontSize: 64,
+              fontStyle: "bold",
+              fill: slide.textColor || "#1f2937",
+              width: canvasSize.width - 100,
+              name: "Title",
+            });
+          }
+
+          // Subtitle / Content
+          useEditorStore.getState().addTextLayer(slide.content);
+          const contentId = useEditorStore.getState().activeLayerId;
+          if (contentId) {
+            useEditorStore.getState().updateLayer(contentId, {
+              x: 50,
+              y: 200,
+              fontSize: 32,
+              fill: slide.textColor || "#374151",
+              width: canvasSize.width - 100,
+              name: "Content",
+            });
+          }
+        }
+
+        // Go back to first page
+        useEditorStore.getState().setActivePage(0);
+
+        toast.success("AI Carousel generated!", { id: toastId });
+      } catch (error) {
+        console.error("Carousel generation failed:", error);
+        toast.error("Failed to generate carousel. Check console for details.", {
+          id: toastId,
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [canvasSize]
+  );
+  const [showCarouselGenerator, setShowCarouselGenerator] = useState(false);
+
+  const handleAddIcon = useCallback((dataUrl: string) => {
+    useEditorStore.getState().addImageLayer(dataUrl);
+    const id = useEditorStore.getState().activeLayerId;
+    if (id) {
+      useEditorStore.getState().updateLayer(id, { name: "Icon" });
+    }
+  }, []);
+
   return (
     <div className="flex h-full flex-col bg-background">
       <EditorHeader
@@ -321,6 +483,7 @@ export function ImageEditor({
       <div className="flex flex-1 overflow-hidden">
         <EditorToolbar
           isProcessing={isProcessing}
+          onAddIcon={handleAddIcon}
           onAddImage={() => setShowGalleryPicker(true)}
           onAiGenerate={() => {
             const activeLayer = layers.find((l) => l.id === activeLayerId);
@@ -329,6 +492,7 @@ export function ImageEditor({
               onAiGenerate(imgLayer.dataUrl);
             }
           }}
+          onGenerateCarousel={() => setShowCarouselGenerator(true)}
           onRemoveBackground={handleRemoveBackground}
           onSaveLayerAsImage={() => {
             const activeLayer = layers.find((l) => l.id === activeLayerId);
@@ -358,6 +522,9 @@ export function ImageEditor({
                 width={canvasSize.width}
               />
             </div>
+            <div className="absolute bottom-4 left-1/2 z-50 -translate-x-1/2">
+              <PageCarousel />
+            </div>
           </div>
 
           <EditorFooter
@@ -368,6 +535,7 @@ export function ImageEditor({
             onExport={onExport}
             onSave={handleSave}
             onSaveAsNew={handleSaveAsNew}
+            onSaveAsTemplate={handleSaveAsTemplate}
             onZoomFit={handleZoomFit}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
@@ -390,6 +558,12 @@ export function ImageEditor({
           />
         </ResizablePanel>
       </div>
+
+      <CarouselGeneratorDialog
+        onGenerate={handleGenerateCarousel}
+        onOpenChange={setShowCarouselGenerator}
+        open={showCarouselGenerator}
+      />
 
       {showGalleryPicker && (
         <GalleryPicker

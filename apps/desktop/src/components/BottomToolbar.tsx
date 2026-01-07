@@ -28,6 +28,7 @@ interface BottomToolbarProps {
   onAddVideoClick: () => void;
   onSettingsClick: () => void;
   onTrashClick: () => void;
+  onNewProjectClick: () => void;
 }
 
 export function BottomToolbar({
@@ -36,6 +37,7 @@ export function BottomToolbar({
   onAddVideoClick,
   onSettingsClick,
   onTrashClick,
+  onNewProjectClick,
 }: BottomToolbarProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -221,7 +223,10 @@ export function BottomToolbar({
             >
               <Settings className="size-4" />
             </Button>
-            <AddMenu onAddVideoClick={onAddVideoClick} />
+            <AddMenu
+              onAddVideoClick={onAddVideoClick}
+              onNewProjectClick={onNewProjectClick}
+            />
           </>
         )}
       </div>

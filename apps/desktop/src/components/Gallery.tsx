@@ -15,6 +15,8 @@ import type { ViewMode } from "@/App";
 import { EmptyState } from "@/components/gallery/EmptyState";
 import { gridComponents } from "@/components/gallery/VirtuosoGridComponents";
 import { ThumbnailGridItem } from "@/components/ThumbnailGridItem";
+import { TitleBar } from "@/components/TitleBar";
+import { AddMenu } from "@/components/toolbar/add-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +45,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VideoExtractor } from "@/components/VideoExtractor";
 import { useDragSelection } from "@/hooks/use-drag-selection";
 import { openAndLoadImages } from "@/lib/image-file-utils";
@@ -56,13 +59,19 @@ import { useSelectionStore } from "@/stores/use-selection-store";
 interface GalleryProps {
   viewMode: ViewMode;
   onThumbnailClick: (thumbnail: ThumbnailItem) => void;
+  onTemplateClick?: (thumbnail: ThumbnailItem) => void;
   onExportClick: (thumbnail: ThumbnailItem) => void;
+  onAddVideoClick: () => void;
+  onNewProjectClick: () => void;
 }
 
 export function Gallery({
   viewMode,
   onThumbnailClick,
+  onTemplateClick,
   onExportClick,
+  onAddVideoClick,
+  onNewProjectClick,
 }: GalleryProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -79,6 +88,7 @@ export function Gallery({
   const rawThumbnails = useGalleryStore((s) => s.thumbnails);
   const isLoaded = useGalleryStore((s) => s.isLoaded);
 
+  const [activeTab, setActiveTab] = useState("projects");
   const [searchQuery, setSearchQuery] = useState("");
 
   const isSelectionMode = useSelectionStore((s) => s.isSelectionMode);
@@ -89,7 +99,7 @@ export function Gallery({
   const lastClickedIndex = useGalleryUIStore((s) => s.lastClickedIndex);
   const setLastClickedIndex = useGalleryUIStore((s) => s.setLastClickedIndex);
 
-  const thumbnails = useMemo(() => {
+  const filteredThumbnails = useMemo(() => {
     let filtered = rawThumbnails;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -105,6 +115,15 @@ export function Gallery({
       return sortOrder === "desc" ? -cmp : cmp;
     });
   }, [rawThumbnails, sortField, sortOrder, searchQuery]);
+
+  const projects = useMemo(
+    () => filteredThumbnails.filter((t) => !t.isTemplate),
+    [filteredThumbnails]
+  );
+  const templates = useMemo(
+    () => filteredThumbnails.filter((t) => t.isTemplate),
+    [filteredThumbnails]
+  );
 
   const gridColClass = useMemo(() => {
     const gridClasses: Record<ViewMode, string> = {
@@ -170,39 +189,61 @@ export function Gallery({
     setDeleteDialogOpen(true);
   }, []);
 
-  const itemContent = (index: number) => {
-    if (index === 0) {
+  const itemContent = useCallback(
+    (index: number, mode: "projects" | "templates") => {
+      if (mode === "projects") {
+        const thumbnail = projects[index];
+        if (!thumbnail) return null;
+        return (
+          <ThumbnailGridItem
+            isProcessing={processingId === thumbnail.id}
+            onDelete={handleDelete}
+            onExportClick={onExportClick}
+            onRemoveBackground={handleRemoveBackground}
+            onRename={handleRename}
+            onThumbnailClick={(t) => {
+              setLastClickedIndex(index);
+              onThumbnailClick(t);
+            }}
+            thumbnail={thumbnail}
+          />
+        );
+      }
+      const thumbnail = templates[index];
+      if (!thumbnail) return null;
       return (
-        <button
-          className="flex aspect-video h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-muted-foreground/30 border-dashed transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
-          onClick={handleAddImage}
-          type="button"
-        >
-          <Plus className="size-8 text-muted-foreground/50" />
-        </button>
+        <ThumbnailGridItem
+          isProcessing={processingId === thumbnail.id}
+          onDelete={handleDelete}
+          onExportClick={onExportClick}
+          onRemoveBackground={handleRemoveBackground}
+          onRename={handleRename}
+          onThumbnailClick={(t) => {
+            setLastClickedIndex(index);
+            if (onTemplateClick) {
+              onTemplateClick(t);
+            } else {
+              onThumbnailClick(t);
+            }
+          }}
+          thumbnail={thumbnail}
+        />
       );
-    }
-
-    const thumbnail = thumbnails[index - 1];
-    if (!thumbnail) {
-      return null;
-    }
-
-    return (
-      <ThumbnailGridItem
-        isProcessing={processingId === thumbnail.id}
-        onDelete={handleDelete}
-        onExportClick={onExportClick}
-        onRemoveBackground={handleRemoveBackground}
-        onRename={handleRename}
-        onThumbnailClick={(t) => {
-          setLastClickedIndex(index);
-          onThumbnailClick(t);
-        }}
-        thumbnail={thumbnail}
-      />
-    );
-  };
+    },
+    [
+      projects,
+      templates,
+      processingId,
+      handleDelete,
+      onExportClick,
+      handleRemoveBackground,
+      handleRename,
+      setLastClickedIndex,
+      onThumbnailClick,
+      onAddVideoClick,
+      onNewProjectClick,
+    ]
+  );
 
   if (!isLoaded) {
     return (
@@ -213,126 +254,198 @@ export function Gallery({
     );
   }
 
-  if (rawThumbnails.length === 0) {
-    return (
-      <EmptyState
-        action={{
-          label: "Add Image",
-          icon: <Plus className="mr-2 size-4" />,
-          onClick: handleAddImage,
-        }}
-        description="Start by adding images or extracting frames from videos"
-        icon={<GalleryThumbnails className="size-10 fill-muted-foreground" />}
-        title="No thumbnails yet"
-      />
-    );
-  }
+  // Generic empty state logic replaced by tab-specific
 
   return (
     <div className="relative flex flex-1 select-none flex-col">
-      {/* Search Bar */}
-      <div className="relative z-10 p-4">
-        <div className="relative">
-          <Search className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-14 pr-20 pl-12 text-xl"
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search"
-            type="text"
-            value={searchQuery}
-          />
-          <Badge
-            className="absolute top-1/2 right-3 -translate-y-1/2"
-            variant="secondary"
-          >
-            {thumbnails.length}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Gallery Grid */}
-      <div className="relative flex-1">
-        <ContextMenu>
-          <ContextMenuTrigger>
-            <div
-              className="absolute inset-0 overflow-hidden"
-              onMouseDown={handleMouseDown}
-              ref={containerRef}
-            >
-              {selectionBox && (
-                <div
-                  className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
-                  style={{
-                    left: selectionBox.x,
-                    top: selectionBox.y,
-                    width: selectionBox.width,
-                    height: selectionBox.height,
-                  }}
+      <Tabs
+        className="flex flex-1 flex-col"
+        onValueChange={(val) => {
+          setActiveTab(val);
+          useSelectionStore.getState().clearSelection();
+        }}
+        value={activeTab}
+      >
+        <TitleBar
+          actions={
+            <div className="flex items-center gap-2">
+              <div className="relative z-[50]">
+                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground/50" />
+                <Input
+                  className="h-8 w-48 border-none bg-muted/30 pr-8 pl-9 transition-all focus-visible:w-64 focus-visible:ring-1 focus-visible:ring-primary/20"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search projects..."
+                  type="text"
+                  value={searchQuery}
                 />
-              )}
-              {thumbnails.length === 0 && searchQuery.trim() ? (
-                <div className="flex h-full flex-col items-center justify-center gap-4">
-                  <Search className="size-10 text-muted-foreground opacity-40" />
-                  <div className="text-center">
-                    <p className="font-medium">No results found</p>
-                    <p className="mt-1 text-muted-foreground text-sm">
-                      Try a different search term
-                    </p>
-                  </div>
-                  <Button onClick={() => setSearchQuery("")} variant="ghost">
-                    Clear Search
-                  </Button>
-                </div>
-              ) : (
-                <VirtuosoGrid
-                  components={gridComponents}
-                  initialTopMostItemIndex={lastClickedIndex ?? 0}
-                  itemContent={itemContent}
-                  listClassName={gridColClass}
-                  overscan={600}
-                  scrollerRef={(ref) => {
-                    scrollerRef.current = ref as HTMLDivElement;
-                  }}
-                  style={{ height: "100%", width: "100%" }}
-                  totalCount={thumbnails.length + 1}
-                />
-              )}
+                {(activeTab === "templates"
+                  ? templates.length
+                  : projects.length) > 0 && (
+                  <Badge
+                    className="absolute top-1/2 right-2 h-5 -translate-y-1/2 border-none bg-primary/10 px-1.5 font-bold text-[10px] text-primary"
+                    variant="outline"
+                  >
+                    {activeTab === "templates"
+                      ? templates.length
+                      : projects.length}
+                  </Badge>
+                )}
+              </div>
             </div>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={handleAddImage}>
-              <ImagePlus className="mr-2 size-4" />
-              Upload Photo
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => setShowVideoExtractor(true)}>
-              <MonitorPlay className="mr-2 size-4" />
-              Upload Video
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => {
-                toggleSelectionMode();
-                selectAll(thumbnails.map((t) => t.id));
-              }}
-            >
-              <CheckSquare className="mr-2 size-4" />
-              Select All
-            </ContextMenuItem>
-            <ContextMenuItem
-              onClick={() => {
-                if (isSelectionMode) {
-                  exitSelectionMode();
-                } else {
+          }
+          title={
+            <TabsList className="relative z-[50] h-8 gap-1 border-none bg-transparent p-0">
+              <TabsTrigger
+                className="h-8 rounded-md border-none px-4 font-semibold transition-all data-[state=active]:border-none data-[state=active]:bg-muted data-[state=active]:shadow-none"
+                value="projects"
+              >
+                Projects
+              </TabsTrigger>
+              <TabsTrigger
+                className="h-8 rounded-md border-none px-4 font-semibold transition-all data-[state=active]:border-none data-[state=active]:bg-muted data-[state=active]:shadow-none"
+                value="templates"
+              >
+                Templates
+              </TabsTrigger>
+            </TabsList>
+          }
+        />
+
+        <div className="relative flex-1 select-none overflow-hidden">
+          <ContextMenu>
+            <ContextMenuTrigger className="h-full">
+              <div
+                className="h-full w-full overflow-hidden"
+                onMouseDown={handleMouseDown}
+                ref={containerRef}
+              >
+                {selectionBox && (
+                  <div
+                    className="pointer-events-none absolute z-50 border border-primary/50 bg-primary/20"
+                    style={{
+                      left: selectionBox.x,
+                      top: selectionBox.y,
+                      width: selectionBox.width,
+                      height: selectionBox.height,
+                    }}
+                  />
+                )}
+
+                <TabsContent className="mt-0 h-full" value="projects">
+                  {projects.length === 0 && searchQuery.trim() ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-4">
+                      <Search className="size-10 text-muted-foreground opacity-40" />
+                      <div className="text-center">
+                        <p className="font-medium">No results found</p>
+                        <p className="mt-1 text-muted-foreground text-sm">
+                          Try a different search term
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setSearchQuery("")}
+                        variant="ghost"
+                      >
+                        Clear Search
+                      </Button>
+                    </div>
+                  ) : projects.length === 0 && !searchQuery.trim() ? (
+                    <EmptyState
+                      action={
+                        <AddMenu
+                          onAddVideoClick={() => setShowVideoExtractor(true)}
+                          onNewProjectClick={onNewProjectClick}
+                          trigger={
+                            <Button className="gap-2" variant="ghost">
+                              <Plus className="size-4" />
+                              Create
+                            </Button>
+                          }
+                        />
+                      }
+                      description="Start by adding images or extracting frames from videos"
+                      icon={
+                        <GalleryThumbnails className="size-10 fill-muted-foreground" />
+                      }
+                      title="No projects yet"
+                    />
+                  ) : (
+                    <VirtuosoGrid
+                      components={gridComponents}
+                      initialTopMostItemIndex={lastClickedIndex ?? 0}
+                      itemContent={(index) => itemContent(index, "projects")}
+                      listClassName={gridColClass}
+                      overscan={600}
+                      scrollerRef={(ref) => {
+                        scrollerRef.current = ref as HTMLDivElement;
+                      }}
+                      style={{ height: "100%", width: "100%" }}
+                      totalCount={projects.length}
+                    />
+                  )}
+                </TabsContent>
+
+                <TabsContent className="mt-0 h-full" value="templates">
+                  {templates.length === 0 ? (
+                    <EmptyState
+                      description="Save a project as a template to see it here"
+                      icon={
+                        <GalleryThumbnails className="size-10 fill-muted-foreground" />
+                      }
+                      title="No templates yet"
+                    />
+                  ) : (
+                    <VirtuosoGrid
+                      components={gridComponents}
+                      itemContent={(index) => itemContent(index, "templates")}
+                      listClassName={gridColClass}
+                      scrollerRef={(evt) =>
+                        (scrollerRef.current = evt as HTMLDivElement)
+                      }
+                      style={{ height: "100%", width: "100%" }}
+                      totalCount={templates.length}
+                    />
+                  )}
+                </TabsContent>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={handleAddImage}>
+                <ImagePlus className="mr-2 size-4" />
+                Upload Photo
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setShowVideoExtractor(true)}>
+                <MonitorPlay className="mr-2 size-4" />
+                Upload Video
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={() => {
                   toggleSelectionMode();
-                }
-              }}
-            >
-              <Grid2X2 className="mr-2 size-4" />
-              {isSelectionMode ? "Exit Selection Mode" : "Enter Selection Mode"}
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      </div>
+                  const list = activeTab === "projects" ? projects : templates;
+                  selectAll(list.map((t) => t.id));
+                }}
+              >
+                <CheckSquare className="mr-2 size-4" />
+                Select All
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  if (isSelectionMode) {
+                    exitSelectionMode();
+                  } else {
+                    toggleSelectionMode();
+                  }
+                }}
+              >
+                <Grid2X2 className="mr-2 size-4" />
+                {isSelectionMode
+                  ? "Exit Selection Mode"
+                  : "Enter Selection Mode"}
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+        </div>
+      </Tabs>
       {showVideoExtractor && (
         <VideoExtractor onClose={() => setShowVideoExtractor(false)} />
       )}

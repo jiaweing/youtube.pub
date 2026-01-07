@@ -1,23 +1,26 @@
 import {
+  Bot,
   Circle,
   ImageDown,
   ImagePlus,
   MousePointer,
   RectangleHorizontal,
   Redo2,
+  Smile,
   Sparkles,
   Type,
   Undo2,
   Wand2,
 } from "lucide-react";
-
-import { buttonVariants } from "@/components/ui/button";
+import { useState } from "react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEditorStore } from "@/stores/use-editor-store";
+import { IconPicker } from "./IconPicker";
 
 interface EditorToolbarProps {
   isProcessing: boolean;
@@ -25,6 +28,8 @@ interface EditorToolbarProps {
   onAddImage: () => void;
   onAiGenerate: () => void;
   onSaveLayerAsImage: () => void;
+  onGenerateCarousel: () => void;
+  onAddIcon: (dataUrl: string) => void;
 }
 
 export function EditorToolbar({
@@ -33,7 +38,10 @@ export function EditorToolbar({
   onAddImage,
   onAiGenerate,
   onSaveLayerAsImage,
+  onGenerateCarousel,
+  onAddIcon,
 }: EditorToolbarProps) {
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const {
     activeTool,
     activeLayerId,
@@ -138,32 +146,30 @@ export function EditorToolbar({
       <Tooltip>
         <TooltipTrigger
           className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
-          disabled={!canRemoveBg}
-          onClick={onRemoveBackground}
+          onClick={() => setShowIconPicker(true)}
         >
-          <Wand2 className="size-4" />
+          <Smile className="size-4" />
         </TooltipTrigger>
-        <TooltipContent side="right">Remove Background</TooltipContent>
+        <TooltipContent side="right">Icon Picker</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger
-          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
-          disabled={!canAiGenerate}
-          onClick={onAiGenerate}
-        >
-          <Sparkles className="size-4" />
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              className="disabled:opacity-100"
+              disabled={!activeLayer || activeLayer.type !== "image"}
+              onClick={onSaveLayerAsImage}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <ImageDown className="size-4" />
+            </Button>
+          </span>
         </TooltipTrigger>
-        <TooltipContent side="right">Generate Image</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
-          disabled={!activeLayer || activeLayer.type !== "image"}
-          onClick={onSaveLayerAsImage}
-        >
-          <ImageDown className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent side="right">Save Layer as Image</TooltipContent>
+        <TooltipContent side="right">
+          Save Layer as Image{" "}
+          {(!activeLayer || activeLayer.type !== "image") && "(Select Image)"}
+        </TooltipContent>
       </Tooltip>
 
       <div className="my-1 h-px w-8 bg-border" />
@@ -171,23 +177,88 @@ export function EditorToolbar({
       <Tooltip>
         <TooltipTrigger
           className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
-          disabled={!canUndo()}
-          onClick={undo}
+          onClick={onGenerateCarousel}
         >
-          <Undo2 className="size-4" />
+          <Bot className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent side="right">Generate Carousel</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              className="disabled:opacity-100"
+              disabled={!canRemoveBg}
+              onClick={onRemoveBackground}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Wand2 className="size-4" />
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Remove Background{" "}
+          {(!activeLayer || activeLayer.type !== "image") && "(Select Image)"}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              className="disabled:opacity-100"
+              disabled={!canAiGenerate}
+              onClick={onAiGenerate}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Sparkles className="size-4" />
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Generate Image{" "}
+          {(!activeLayer || activeLayer.type !== "image") && "(Select Image)"}
+        </TooltipContent>
+      </Tooltip>
+
+      <div className="my-1 h-px w-8 bg-border" />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              disabled={!canUndo()}
+              onClick={undo}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Undo2 className="size-4" />
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent side="right">Undo (Ctrl+Z)</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger
-          className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
-          disabled={!canRedo()}
-          onClick={redo}
-        >
-          <Redo2 className="size-4" />
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              disabled={!canRedo()}
+              onClick={redo}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Redo2 className="size-4" />
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent side="right">Redo (Ctrl+Y)</TooltipContent>
       </Tooltip>
+      <IconPicker
+        onOpenChange={setShowIconPicker}
+        onSelect={onAddIcon}
+        open={showIconPicker}
+      />
     </div>
   );
 }

@@ -110,7 +110,7 @@ export const ThumbnailGridItem = memo(function ThumbnailGridItem({
       <ContextMenuTrigger>
         <div
           className={cn(
-            "group relative aspect-video cursor-pointer overflow-hidden rounded-lg bg-card transition-transform hover:scale-[1.02]",
+            "group relative aspect-video cursor-pointer overflow-hidden rounded-lg border border-border bg-card transition-transform hover:scale-[1.02]",
             isSelectionMode && isSelected && "ring-2 ring-primary"
           )}
           data-thumbnail-id={thumbnail.id}

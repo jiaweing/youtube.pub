@@ -18,6 +18,7 @@ export interface ThumbnailItem {
   updatedAt: number;
   canvasWidth?: number;
   canvasHeight?: number;
+  isTemplate?: boolean;
   // Lazy loaded fields (not in DB)
   previewUrl?: string;
 }
@@ -68,7 +69,8 @@ interface GalleryState {
     previewDataUrl: string,
     layers: Layer[],
     canvasWidth: number,
-    canvasHeight: number
+    canvasHeight: number,
+    options?: { isTemplate?: boolean; pages?: any[] }
   ) => Promise<string>;
   updateThumbnailName: (id: string, name: string) => Promise<void>;
   updateThumbnail: (id: string, dataUrl: string) => Promise<void>;
@@ -86,7 +88,7 @@ interface GalleryState {
   // Lazy loading
   loadPreviewForId: (id: string) => Promise<string | null>;
   loadFullImageForId: (id: string) => Promise<string | null>;
-  loadLayerDataForId: (id: string) => Promise<Layer[] | null>;
+  loadLayerDataForId: (id: string) => Promise<any[] | null>;
 }
 
 export const useGalleryStore = create<GalleryState>()((set, get) => ({
@@ -326,10 +328,12 @@ Copy`,
     previewDataUrl,
     layers,
     canvasWidth,
-    canvasHeight
+    canvasHeight,
+    options
   ) => {
     const projectId = id || crypto.randomUUID();
     const now = Date.now();
+    const isTemplate = options?.isTemplate ?? false;
     logger.info(
       { name, layerCount: layers.length },
       "[Gallery] Saving project"
@@ -339,7 +343,7 @@ Copy`,
     const { previewUrl } = await saveThumbnail(projectId, previewDataUrl);
 
     // Save layer data
-    await saveLayerData(projectId, layers);
+    await saveLayerData(projectId, options?.pages || layers);
 
     const existingItem = get().thumbnails.find((t) => t.id === projectId);
     if (existingItem) {
@@ -362,8 +366,8 @@ Copy`,
       try {
         const database = await getDb();
         await database.execute(
-          "UPDATE thumbnails SET name = $1, canvasWidth = $2, canvasHeight = $3, updatedAt = $4 WHERE id = $5",
-          [name, canvasWidth, canvasHeight, now, projectId]
+          "UPDATE thumbnails SET name = $1, canvasWidth = $2, canvasHeight = $3, updatedAt = $4, isTemplate = $5 WHERE id = $6",
+          [name, canvasWidth, canvasHeight, now, isTemplate ? 1 : 0, projectId]
         );
         logger.info({ projectId }, "[Gallery] Project updated");
       } catch (error) {
@@ -378,6 +382,7 @@ Copy`,
         updatedAt: now,
         canvasWidth,
         canvasHeight,
+        isTemplate,
         previewUrl,
       };
 
@@ -389,8 +394,16 @@ Copy`,
       try {
         const database = await getDb();
         await database.execute(
-          "INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight) VALUES ($1, $2, $3, $4, $5, $6)",
-          [projectId, name, now, now, canvasWidth, canvasHeight]
+          "INSERT INTO thumbnails (id, name, createdAt, updatedAt, canvasWidth, canvasHeight, isTemplate) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          [
+            projectId,
+            name,
+            now,
+            now,
+            canvasWidth,
+            canvasHeight,
+            isTemplate ? 1 : 0,
+          ]
         );
         logger.info({ projectId }, "[Gallery] Project saved");
       } catch (error) {
@@ -594,7 +607,7 @@ Copy`,
       const database = await getDb();
       // Only load metadata - NO image data!
       const result = await database.select<ThumbnailItem[]>(
-        "SELECT id, name, createdAt, updatedAt, canvasWidth, canvasHeight FROM thumbnails ORDER BY updatedAt DESC"
+        "SELECT id, name, createdAt, updatedAt, canvasWidth, canvasHeight, isTemplate FROM thumbnails ORDER BY updatedAt DESC"
       );
       logger.info(
         { count: result.length },

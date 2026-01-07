@@ -4,16 +4,20 @@ import { BottomToolbar } from "@/components/BottomToolbar";
 import { ExportDialog } from "@/components/ExportDialog";
 import { Gallery } from "@/components/Gallery";
 import { GeminiImagePage } from "@/components/GeminiImagePage";
+import { NewProjectDialog } from "@/components/gallery/NewProjectDialog";
 import { ImageEditor } from "@/components/ImageEditor";
 import { LicenseActivation } from "@/components/LicenseActivation";
 import { SettingsPage } from "@/components/SettingsPage";
-import { TitleBar } from "@/components/TitleBar";
 import { TrashPage } from "@/components/TrashPage";
 import { Toaster } from "@/components/ui/sonner";
 import { VideoExtractor } from "@/components/VideoExtractor";
 import { useAppUpdater } from "@/hooks/use-app-updater";
+import { useAppSettingsStore } from "@/stores/use-app-settings-store";
 import { useEditorStore } from "@/stores/use-editor-store";
-import type { ThumbnailItem } from "@/stores/use-gallery-store";
+import {
+  type ThumbnailItem,
+  useGalleryStore,
+} from "@/stores/use-gallery-store";
 import { useLicenseStore } from "@/stores/use-license-store";
 
 export type ViewMode = "3" | "4" | "5" | "row";
@@ -29,18 +33,24 @@ export default function App() {
   const [page, setPage] = useState<Page>("gallery");
   const [viewMode, setViewMode] = useState<ViewMode>("4");
   const [showExtractor, setShowExtractor] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [editingThumbnail, setEditingThumbnail] =
     useState<ThumbnailItem | null>(null);
   const [exportingThumbnail, setExportingThumbnail] =
     useState<ThumbnailItem | null>(null);
   const [aiInputImage, setAiInputImage] = useState<string | null>(null);
 
+  const saveProject = useGalleryStore((s) => s.saveProject);
+
   // License validation
   const { isValidated, isValidating, loadStoredLicense } = useLicenseStore();
 
+  const loadSettings = useAppSettingsStore((s) => s.loadSettings);
+
   useEffect(() => {
     loadStoredLicense();
-  }, [loadStoredLicense]);
+    loadSettings();
+  }, [loadStoredLicense, loadSettings]);
 
   // Show loading during initial license check
   if (isValidating && !isValidated) {
@@ -69,6 +79,34 @@ export default function App() {
     setPage("gallery");
   };
 
+  const handleStartFromTemplate = async (template: ThumbnailItem) => {
+    // Duplicate template as a new project
+    const loadLayerDataForId = useGalleryStore.getState().loadLayerDataForId;
+    const layers = await loadLayerDataForId(template.id);
+
+    // Check if it's multi-page (Page[]) or single page (Layer[])
+    const pages =
+      layers && layers.length > 0 && "layers" in layers[0] ? layers : null;
+    const layerList = pages ? pages[0].layers : layers || [];
+
+    const newId = await saveProject(
+      null,
+      `${template.name} (Copy)`,
+      template.previewUrl || "",
+      layerList,
+      template.canvasWidth || 1080,
+      template.canvasHeight || 1080,
+      { pages: pages || undefined }
+    );
+
+    const newThumbnail = useGalleryStore
+      .getState()
+      .thumbnails.find((t) => t.id === newId);
+    if (newThumbnail) {
+      handleEditThumbnail(newThumbnail);
+    }
+  };
+
   const handleOpenAiGenerate = (imageDataUrl: string) => {
     setAiInputImage(imageDataUrl);
     setPage("ai-generate");
@@ -77,6 +115,55 @@ export default function App() {
   const handleCloseAiGenerate = () => {
     setAiInputImage(null);
     setPage("editor");
+  };
+
+  const handleCreateProject = async (
+    width: number,
+    height: number,
+    name: string
+  ) => {
+    const bgLayer: any = {
+      id: crypto.randomUUID(),
+      type: "shape",
+      shapeType: "rect",
+      name: "Background Layer",
+      locked: true,
+      visible: true,
+      x: 0,
+      y: 0,
+      width,
+      height,
+      fill: "#ffffff",
+      stroke: "",
+      strokeWidth: 0,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      opacity: 1,
+      cornerRadius: 0,
+    };
+
+    // White 1x1 pixel base64 placeholder
+    const previewDataUrl =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVkeKcAAAAASUVORK5CYII=";
+
+    const id = await saveProject(
+      null,
+      name,
+      previewDataUrl,
+      [bgLayer],
+      width,
+      height
+    );
+
+    // Find and edit
+    // Small delay to ensure store update if needed, though usually synchronous in Zustand if not async
+    const newThumbnail = useGalleryStore
+      .getState()
+      .thumbnails.find((t) => t.id === id);
+    if (newThumbnail) {
+      handleEditThumbnail(newThumbnail);
+    }
   };
 
   const handleSaveAiLayer = (dataUrl: string) => {
@@ -153,14 +240,17 @@ export default function App() {
   // Gallery page (default)
   return (
     <div className="flex h-screen flex-col bg-background">
-      <TitleBar />
       <Gallery
+        onAddVideoClick={() => setShowExtractor(true)}
         onExportClick={setExportingThumbnail}
+        onNewProjectClick={() => setNewProjectOpen(true)}
+        onTemplateClick={handleStartFromTemplate}
         onThumbnailClick={handleEditThumbnail}
         viewMode={viewMode}
       />
       <BottomToolbar
         onAddVideoClick={() => setShowExtractor(true)}
+        onNewProjectClick={() => setNewProjectOpen(true)}
         onSettingsClick={() => setPage("settings")}
         onTrashClick={() => setPage("trash")}
         onViewModeChange={setViewMode}
@@ -175,6 +265,11 @@ export default function App() {
           thumbnail={exportingThumbnail}
         />
       )}
+      <NewProjectDialog
+        onCreate={handleCreateProject}
+        onOpenChange={setNewProjectOpen}
+        open={newProjectOpen}
+      />
       <Toaster />
       <BackgroundRemovalQueue />
       <UpdateChecker />

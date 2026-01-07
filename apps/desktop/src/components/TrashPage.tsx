@@ -4,6 +4,7 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/gallery/EmptyState";
 import { gridComponents } from "@/components/gallery/VirtuosoGridComponents";
+import { TitleBar } from "@/components/TitleBar";
 import {
   DeleteItemDialog,
   DeleteSelectedDialog,
@@ -248,28 +249,31 @@ export function TrashPage({ onClose }: TrashPageProps) {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="relative z-[110] flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={onClose}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <span className="text-sm">
-            Trash
-            {trashItems.length > 0 && (
-              <span className="text-muted-foreground">
-                {" "}
-                ({trashItems.length}{" "}
-                {trashItems.length === 1 ? "item" : "items"})
-              </span>
-            )}
-          </span>
-        </div>
-      </header>
+      <TitleBar
+        showIcon={false}
+        title={
+          <div className="flex items-center gap-3">
+            <Button
+              className="relative z-[110]"
+              onClick={onClose}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <span className="font-medium text-sm">
+              Trash
+              {trashItems.length > 0 && (
+                <span className="ml-2 font-normal text-muted-foreground">
+                  ({trashItems.length}{" "}
+                  {trashItems.length === 1 ? "item" : "items"})
+                </span>
+              )}
+            </span>
+          </div>
+        }
+      />
 
       {/* Content */}
       <div className="relative flex-1 select-none">

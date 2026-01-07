@@ -1,17 +1,26 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   ArrowLeft,
-  BadgeCheck,
-  CreditCard,
+  Check,
   ExternalLink,
-  Key,
+  Monitor,
+  Moon,
+  Sun,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { TitleBar } from "@/components/TitleBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getGeminiApiKey,
@@ -19,6 +28,7 @@ import {
   setGeminiApiKey,
 } from "@/lib/gemini-store";
 import { POLAR_CONFIG } from "@/lib/polar-config";
+import { useAppSettingsStore } from "@/stores/use-app-settings-store"; // Added this import
 import { useLicenseStore } from "@/stores/use-license-store";
 
 interface SettingsPageProps {
@@ -29,19 +39,23 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="relative z-[110] flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={onClose}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <span className="text-sm">Settings</span>
-        </div>
-      </header>
+      <TitleBar
+        showIcon={false}
+        title={
+          <div className="flex items-center gap-3">
+            <Button
+              className="relative z-[110]"
+              onClick={onClose}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <span className="font-medium text-sm">Settings</span>
+          </div>
+        }
+      />
 
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
@@ -53,17 +67,21 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           {/* Left sidebar tabs */}
           <TabsList className="flex h-full w-56 flex-col items-stretch justify-start gap-1 rounded-none border-none bg-transparent p-4">
             <TabsTrigger
-              className="justify-start gap-2 border-none px-3 py-2 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              className="justify-start border-none px-3 py-2 data-[state=active]:bg-muted data-[state=active]:shadow-none"
               value="api-key"
             >
-              <Key className="size-4" />
               API Key
             </TabsTrigger>
             <TabsTrigger
-              className="justify-start gap-2 border-none px-3 py-2 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              className="justify-start border-none px-3 py-2 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              value="appearance"
+            >
+              Appearance
+            </TabsTrigger>
+            <TabsTrigger
+              className="justify-start border-none px-3 py-2 data-[state=active]:bg-muted data-[state=active]:shadow-none"
               value="billing"
             >
-              <CreditCard className="size-4" />
               Billing
             </TabsTrigger>
           </TabsList>
@@ -75,6 +93,10 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                 <ApiKeySettings />
               </TabsContent>
 
+              <TabsContent className="mt-0" value="appearance">
+                <AppearanceSettings />
+              </TabsContent>
+
               <TabsContent className="mt-0" value="billing">
                 <BillingSettings />
               </TabsContent>
@@ -82,6 +104,28 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           </div>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+interface SettingRowProps {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}
+
+function SettingRow({ title, description, children }: SettingRowProps) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+      <div className="space-y-0.5">
+        <p className="font-medium">{title}</p>
+        {description && (
+          <p className="text-muted-foreground text-sm leading-tight">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -134,63 +178,131 @@ function ApiKeySettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-2 font-semibold text-lg">Gemini API Key</h2>
-        <p className="text-muted-foreground text-sm">
-          Enter your Gemini API key to enable AI image generation features.
+      <h2 className="pl-2 font-semibold text-lg">Gemini API Key</h2>
+
+      <div className="space-y-4">
+        {hasKey ? (
+          <SettingRow title="API Key">
+            <Button onClick={handleRemove} size="sm" variant="destructive">
+              <Trash2 className="mr-2 size-4" />
+              Remove
+            </Button>
+          </SettingRow>
+        ) : (
+          <SettingRow title="API Key">
+            <div className="flex items-center gap-2">
+              <Input
+                className="w-64"
+                id="api-key"
+                onChange={(e) => setApiKey(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSave();
+                  }
+                }}
+                placeholder="Enter your API key"
+                type="password"
+                value={apiKey}
+              />
+              {apiKey.trim().length > 0 && (
+                <Button
+                  className="size-8 text-muted-foreground hover:text-foreground"
+                  onClick={handleSave}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Check className="size-4" />
+                </Button>
+              )}
+            </div>
+          </SettingRow>
+        )}
+
+        <p className="-mt-2 pl-2 text-muted-foreground text-xs">
+          Required for AI image generation features.{" "}
+          <button
+            className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+            onClick={() => openUrl("https://aistudio.google.com/apikey")}
+            type="button"
+          >
+            <ExternalLink className="size-3" />
+            Get your API key from Google AI Studio
+          </button>
         </p>
       </div>
+    </div>
+  );
+}
 
-      {hasKey ? (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full bg-green-500/10">
-              <Key className="size-5 text-green-500" />
-            </div>
-            <div>
-              <p className="font-medium">API key configured</p>
-              <p className="text-muted-foreground text-sm">
-                Your Gemini API key is securely stored
-              </p>
-            </div>
-          </div>
-          <Button onClick={handleRemove} size="sm" variant="destructive">
-            <Trash2 className="mr-2 size-4" />
-            Remove
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="api-key">API Key</Label>
-            <Input
-              id="api-key"
-              onChange={(e) => setApiKey(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSave();
-                }
-              }}
-              placeholder="Enter your Gemini API key"
-              type="password"
-              value={apiKey}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground hover:underline"
-              onClick={() => openUrl("https://aistudio.google.com/apikey")}
-              type="button"
+function AppearanceSettings() {
+  const { showDecemberSnow, setShowDecemberSnow, theme, setTheme } =
+    useAppSettingsStore();
+
+  return (
+    <div className="space-y-6">
+      <h2 className="pl-2 font-semibold text-lg">Appearance</h2>
+
+      <div className="space-y-4">
+        <SettingRow title="Theme">
+          <Select onValueChange={(val: any) => setTheme(val)} value={theme}>
+            <SelectTrigger
+              className="w-32 border-none bg-transparent shadow-none focus:bg-transparent dark:bg-transparent"
+              size="sm"
             >
-              <ExternalLink className="size-3" />
-              Get your API key from Google AI Studio
-            </button>
-            <Button disabled={!apiKey.trim()} onClick={handleSave}>
-              Save Key
-            </Button>
-          </div>
+              <SelectValue>
+                {theme === "light" && (
+                  <>
+                    <Sun className="size-4" />
+                    Light
+                  </>
+                )}
+                {theme === "dark" && (
+                  <>
+                    <Moon className="size-4" />
+                    Dark
+                  </>
+                )}
+                {theme === "system" && (
+                  <>
+                    <Monitor className="size-4" />
+                    System
+                  </>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="light">
+                <Sun className="size-4" />
+                Light
+              </SelectItem>
+              <SelectItem value="dark">
+                <Moon className="size-4" />
+                Dark
+              </SelectItem>
+              <SelectItem value="system">
+                <Monitor className="size-4" />
+                System
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+
+        <div className="pt-4">
+          <p className="mb-4 pl-2 font-medium text-muted-foreground text-xs">
+            Miscellaneous
+          </p>
+          <SettingRow title="December Snowfall">
+            <Switch
+              checked={showDecemberSnow}
+              onCheckedChange={setShowDecemberSnow}
+            />
+          </SettingRow>
         </div>
-      )}
+
+        <p className="-mt-2 pl-2 text-muted-foreground text-xs">
+          Show a festive snowfall effect in the title bar during December.
+        </p>
+      </div>
     </div>
   );
 }
@@ -209,65 +321,27 @@ function BillingSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-2 font-semibold text-lg">Billing & License</h2>
-        <p className="text-muted-foreground text-sm">
-          Manage your license and billing information.
-        </p>
-      </div>
+      <h2 className="pl-2 font-semibold text-lg">Billing & License</h2>
 
-      {/* License Status */}
-      <div className="rounded-lg bg-muted/50 p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full bg-green-500/10">
-              <BadgeCheck className="size-5 text-green-500" />
-            </div>
-            <div>
-              <p className="font-medium">Lifetime License</p>
-              <p className="text-muted-foreground text-sm">
-                {validatedData?.customerEmail || "Active"}
-                {validatedData?.expiresAt
-                  ? ` · Expires ${new Date(validatedData.expiresAt).toLocaleDateString()}`
-                  : " · No expiry"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={handleManageLicense} size="sm" variant="ghost">
-              <ExternalLink className="mr-2 size-4" />
-              Manage License
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-lg bg-muted/30 p-4">
-          <div>
-            <p className="font-medium">Customer Portal</p>
-            <p className="text-muted-foreground text-sm">
-              View invoices, update payment info, and manage your subscription.
-            </p>
-          </div>
-          <Button onClick={handleManageLicense} variant="ghost">
+        <SettingRow
+          description={validatedData?.customerEmail}
+          title="Lifetime License"
+        >
+          <Button onClick={handleManageLicense} size="sm" variant="ghost">
             <ExternalLink className="mr-2 size-4" />
-            Open Portal
+            Manage
           </Button>
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-destructive/5 p-4">
-          <div>
-            <p className="font-medium text-destructive">Deactivate License</p>
-            <p className="text-muted-foreground text-sm">
-              Remove your license from this device.
-            </p>
-          </div>
-          <Button onClick={handleDeactivate} variant="destructive">
+          <Button onClick={handleDeactivate} size="sm" variant="destructive">
             Deactivate
           </Button>
-        </div>
+        </SettingRow>
+
+        <p className="-mt-2 pl-2 text-muted-foreground text-xs">
+          To transfer your license to another device, deactivate it here first.
+          You can reactivate it anytime by logging into the portal with your
+          email.
+        </p>
       </div>
     </div>
   );

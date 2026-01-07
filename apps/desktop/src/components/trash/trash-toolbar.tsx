@@ -32,7 +32,7 @@ export function TrashToolbar({
   onEnterSelectionMode,
 }: TrashToolbarProps) {
   return (
-    <div className="flex h-12 items-center justify-between border-border border-t bg-background/50 px-4 backdrop-blur-sm">
+    <div className="flex h-12 items-center justify-between bg-background/50 px-4 backdrop-blur-sm">
       {isSelectionMode ? (
         <div className="flex flex-1 items-center justify-center gap-4">
           <div className="flex items-center gap-2">
