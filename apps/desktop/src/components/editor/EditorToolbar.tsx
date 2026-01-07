@@ -44,7 +44,9 @@ export function EditorToolbar({
   const [showIconPicker, setShowIconPicker] = useState(false);
   const {
     activeTool,
-    activeLayerId,
+    canUndo,
+    canRedo,
+    activeLayerIds,
     layers,
     canvasWidth,
     canvasHeight,
@@ -54,17 +56,15 @@ export function EditorToolbar({
     updateLayer,
     undo,
     redo,
-    canUndo,
-    canRedo,
   } = useEditorStore();
 
-  const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const activeLayer = layers.find((l) => activeLayerIds.includes(l.id));
   const canRemoveBg = activeLayer?.type === "image" && !isProcessing;
   const canAiGenerate = activeLayer?.type === "image" && !isProcessing;
 
   const handleAddText = () => {
     addTextLayer("Your Text");
-    const newLayerId = useEditorStore.getState().activeLayerId;
+    const newLayerId = useEditorStore.getState().activeLayerIds[0];
     if (newLayerId) {
       updateLayer(newLayerId, {
         x: canvasWidth / 2 - 100,
@@ -76,7 +76,7 @@ export function EditorToolbar({
 
   const handleAddShape = (shapeType: "rect" | "ellipse") => {
     addShapeLayer(shapeType);
-    const newLayerId = useEditorStore.getState().activeLayerId;
+    const newLayerId = useEditorStore.getState().activeLayerIds[0];
     if (newLayerId) {
       updateLayer(newLayerId, {
         x: canvasWidth / 2 - 100,
@@ -109,7 +109,7 @@ export function EditorToolbar({
         >
           <Type className="size-4" />
         </TooltipTrigger>
-        <TooltipContent side="right">Add Text</TooltipContent>
+        <TooltipContent side="right">Add Text (T)</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
@@ -119,7 +119,7 @@ export function EditorToolbar({
         >
           <RectangleHorizontal className="size-4" />
         </TooltipTrigger>
-        <TooltipContent side="right">Add Rectangle</TooltipContent>
+        <TooltipContent side="right">Add Rectangle (R)</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
@@ -129,7 +129,7 @@ export function EditorToolbar({
         >
           <Circle className="size-4" />
         </TooltipTrigger>
-        <TooltipContent side="right">Add Ellipse</TooltipContent>
+        <TooltipContent side="right">Add Ellipse (O)</TooltipContent>
       </Tooltip>
 
       <div className="my-1 h-px w-8 bg-border" />

@@ -1,5 +1,6 @@
 import {
   Crop,
+  Film,
   Instagram,
   Monitor,
   Smartphone,
@@ -26,6 +27,22 @@ export interface NewProjectDialogProps {
 
 const PRESETS = [
   {
+    id: "ig-feed",
+    label: "Instagram Feed",
+    width: 1080,
+    height: 1440,
+    icon: Instagram,
+    description: "3:4 • 1080x1440",
+  },
+  {
+    id: "ig-reels",
+    label: "Instagram Reels",
+    width: 1080,
+    height: 1920,
+    icon: Smartphone,
+    description: "9:16 • 1080x1920",
+  },
+  {
     id: "ig-story",
     label: "Instagram Story",
     width: 1080,
@@ -34,20 +51,20 @@ const PRESETS = [
     description: "9:16 • 1080x1920",
   },
   {
-    id: "ig-post",
-    label: "Square Post",
+    id: "ig-super-long",
+    label: "Super Long Video",
+    width: 5120,
+    height: 1080,
+    icon: Film,
+    description: "5120x1080",
+  },
+  {
+    id: "square",
+    label: "Square",
     width: 1080,
     height: 1080,
     icon: Square,
     description: "1:1 • 1080x1080",
-  },
-  {
-    id: "ig-portrait",
-    label: "Instagram Portrait",
-    width: 1080,
-    height: 1350,
-    icon: Instagram,
-    description: "4:5 • 1080x1350",
   },
   {
     id: "twitter",

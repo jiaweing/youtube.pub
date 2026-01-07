@@ -1,3 +1,13 @@
+import {
+  ColorPicker,
+  ColorPickerAlphaSlider,
+  ColorPickerArea,
+  ColorPickerContent,
+  ColorPickerHueSlider,
+  ColorPickerInput,
+  ColorPickerTrigger,
+} from "@/components/ui/color-picker";
+import { Slider } from "@/components/ui/slider";
 import type { Layer, TextLayer } from "@/stores/use-editor-store";
 
 interface ShadowPropertiesProps {
@@ -14,54 +24,82 @@ export function ShadowProperties({ layer, onUpdate }: ShadowPropertiesProps) {
           <label className="mb-1 block text-muted-foreground text-xs">
             Color
           </label>
-          <input
-            className="h-8 w-full cursor-pointer rounded border border-border"
-            onChange={(e) => onUpdate({ shadowColor: e.target.value })}
-            type="color"
-            value={
-              layer.shadowColor.startsWith("rgba")
-                ? "#000000"
-                : layer.shadowColor
-            }
-          />
+          <ColorPicker
+            onValueChange={(shadowColor) => onUpdate({ shadowColor })}
+            value={layer.shadowColor}
+          >
+            <ColorPickerTrigger
+              className="w-full justify-start gap-2 px-2 text-left font-normal"
+              variant="outline"
+            >
+              <div
+                className="size-4 rounded border border-border"
+                style={{
+                  backgroundColor: layer.shadowColor.startsWith("rgba")
+                    ? "transparent" // Or show checkered pattern if transparent
+                    : layer.shadowColor,
+                  backgroundImage:
+                    layer.shadowColor.startsWith("rgba") &&
+                    layer.shadowColor.endsWith("0)")
+                      ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
+                      : "none",
+                  backgroundSize: "8px 8px",
+                }}
+              />
+              <span className="truncate">
+                {layer.shadowColor === "rgba(0,0,0,0.5)"
+                  ? "Default Shadow"
+                  : layer.shadowColor}
+              </span>
+            </ColorPickerTrigger>
+            <ColorPickerContent>
+              <ColorPickerArea className="h-40 w-full rounded-md border" />
+              <div className="mt-4 flex flex-col gap-2">
+                <ColorPickerHueSlider />
+                <ColorPickerAlphaSlider />
+              </div>
+              <div className="mt-4">
+                <ColorPickerInput />
+              </div>
+            </ColorPickerContent>
+          </ColorPicker>
         </div>
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
-            Blur
+            Blur ({layer.shadowBlur}px)
           </label>
-          <input
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-            onChange={(e) => onUpdate({ shadowBlur: Number(e.target.value) })}
-            type="number"
-            value={layer.shadowBlur}
+          <Slider
+            max={50}
+            min={0}
+            onValueChange={(value) => onUpdate({ shadowBlur: value[0] })}
+            step={1}
+            value={[layer.shadowBlur]}
           />
         </div>
       </div>
       <div className="mt-2 flex gap-2">
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
-            Offset X
+            Offset X ({layer.shadowOffsetX}px)
           </label>
-          <input
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-            onChange={(e) =>
-              onUpdate({ shadowOffsetX: Number(e.target.value) })
-            }
-            type="number"
-            value={layer.shadowOffsetX}
+          <Slider
+            max={50}
+            min={-50}
+            onValueChange={(value) => onUpdate({ shadowOffsetX: value[0] })}
+            step={1}
+            value={[layer.shadowOffsetX]}
           />
         </div>
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
-            Offset Y
+            Offset Y ({layer.shadowOffsetY}px)
           </label>
-          <input
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-            onChange={(e) =>
-              onUpdate({ shadowOffsetY: Number(e.target.value) })
-            }
-            type="number"
-            value={layer.shadowOffsetY}
+          <Slider
+            max={50}
+            min={-50}
+            onValueChange={(value) => onUpdate({ shadowOffsetY: value[0] })}
+            step={1}
+            value={[layer.shadowOffsetY]}
           />
         </div>
       </div>

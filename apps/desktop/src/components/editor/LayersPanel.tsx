@@ -23,10 +23,11 @@ import { useEditorStore } from "@/stores/use-editor-store";
 export function LayersPanel() {
   const {
     layers,
-    activeLayerId,
+    activeLayerIds,
     updateLayer,
     removeLayer,
-    setActiveLayer,
+    setActiveLayers,
+    toggleLayerSelection,
     moveLayer,
     reorderLayers,
   } = useEditorStore();
@@ -72,7 +73,7 @@ export function LayersPanel() {
   }, []);
 
   return (
-    <div className="flex w-full shrink-0 flex-col border-border border-l bg-background">
+    <div className="flex h-full w-full shrink-0 flex-col border-border border-l bg-background">
       <div className="flex items-center justify-between border-border border-b px-3 py-2.5">
         <span className="font-semibold text-muted-foreground text-xs uppercase">
           Layers
@@ -82,22 +83,29 @@ export function LayersPanel() {
         {[...layers].reverse().map((layer, displayIdx) => {
           const realIdx = layers.length - 1 - displayIdx;
           const isEditing = editingLayerId === layer.id;
+          const isSelected = activeLayerIds.includes(layer.id);
 
           return (
             <div
               className={cn(
                 "flex cursor-pointer items-center gap-1 border-border border-b px-2 py-1.5 text-xs transition-colors",
-                activeLayerId === layer.id
-                  ? "bg-accent/20"
-                  : "hover:bg-muted/50"
+                isSelected ? "bg-accent/20" : "hover:bg-muted/50"
               )}
               draggable={!isEditing}
               key={layer.id}
-              onClick={() => setActiveLayer(layer.id)}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey) {
+                  toggleLayerSelection(layer.id);
+                } else {
+                  setActiveLayers([layer.id]);
+                }
+              }}
               onDragEnd={handleLayerDragEnd}
               onDragOver={(e) => handleLayerDragOver(e, realIdx)}
               onDragStart={() => handleLayerDragStart(realIdx)}
-              onKeyDown={(e) => e.key === "Enter" && setActiveLayer(layer.id)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && setActiveLayers([layer.id])
+              }
               role="button"
               tabIndex={0}
             >

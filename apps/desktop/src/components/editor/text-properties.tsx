@@ -1,18 +1,49 @@
-import { Bold, Italic } from "lucide-react";
+import { Bold, Check, ChevronsUpDown, Italic, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ColorPicker,
+  ColorPickerAlphaSlider,
+  ColorPickerArea,
+  ColorPickerContent,
+  ColorPickerHueSlider,
+  ColorPickerInput,
+  ColorPickerTrigger,
+} from "@/components/ui/color-picker";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import type { Layer, TextLayer } from "@/stores/use-editor-store";
 
 interface TextPropertiesProps {
   layer: TextLayer;
   fontFamilies: string[];
   onUpdate: (updates: Partial<Layer>) => void;
+  onRefreshFonts: () => void;
 }
 
 export function TextProperties({
   layer,
   fontFamilies,
   onUpdate,
+  onRefreshFonts,
 }: TextPropertiesProps) {
+  const [openFont, setOpenFont] = useState(false);
+  const [searchFont, setSearchFont] = useState("");
+
   const toggleBold = () => {
     const current = layer.fontStyle;
     const isBold = current.includes("bold");
@@ -47,36 +78,96 @@ export function TextProperties({
     <>
       <div>
         <label className="mb-1 block text-muted-foreground text-xs">Text</label>
-        <input
-          className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
+        <Input
+          className="h-8"
           onChange={(e) => onUpdate({ text: e.target.value })}
-          type="text"
           value={layer.text}
         />
       </div>
       <div>
-        <label className="mb-1 block text-muted-foreground text-xs">
-          Font Family
-        </label>
-        <select
-          className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
-          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
-          value={layer.fontFamily}
-        >
-          {fontFamilies.map((f) => (
-            <option key={f} style={{ fontFamily: f }} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center justify-between">
+          <label className="mb-1 block text-muted-foreground text-xs">
+            Font Family
+          </label>
+          <button
+            className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onRefreshFonts}
+            title="Refresh fonts"
+          >
+            <RefreshCw className="size-3" />
+          </button>
+        </div>
+        <Popover onOpenChange={setOpenFont} open={openFont}>
+          <PopoverTrigger asChild>
+            <Button
+              aria-expanded={openFont}
+              className="w-full justify-between px-2 text-left font-normal"
+              role="combobox"
+              variant="outline"
+            >
+              <span className="truncate">
+                {layer.fontFamily || "Select font..."}
+              </span>
+              <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0">
+            <Command>
+              <CommandInput
+                onValueChange={setSearchFont}
+                placeholder="Search font..."
+              />
+              <CommandList>
+                <CommandEmpty>
+                  <p className="p-2 text-sm">Font not found.</p>
+                  <button
+                    className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      onUpdate({ fontFamily: searchFont });
+                      setOpenFont(false);
+                    }}
+                  >
+                    Use "{searchFont}"
+                  </button>
+                </CommandEmpty>
+                <CommandGroup>
+                  {fontFamilies.map((font) => (
+                    <CommandItem
+                      key={font}
+                      onSelect={(currentValue) => {
+                        // currentValue is lowercased by cmdk usually, but we want the real font name
+                        // We use the font name from the list
+                        onUpdate({ fontFamily: font });
+                        setOpenFont(false);
+                      }}
+                      value={font}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 size-4",
+                          layer.fontFamily === font
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      <span className="truncate" style={{ fontFamily: font }}>
+                        {font}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
             Size
           </label>
-          <input
-            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
+          <Input
+            className="h-8"
             onChange={(e) => onUpdate({ fontSize: Number(e.target.value) })}
             type="number"
             value={layer.fontSize}
@@ -84,57 +175,96 @@ export function TextProperties({
         </div>
         <div className="flex gap-1 pt-5">
           <Button
+            className="h-8 w-8 p-0"
             onClick={toggleBold}
-            size="icon-sm"
             variant={layer.fontStyle.includes("bold") ? "secondary" : "ghost"}
           >
-            <Bold className="size-3.5" />
+            <Bold className="size-4" />
           </Button>
           <Button
+            className="h-8 w-8 p-0"
             onClick={toggleItalic}
-            size="icon-sm"
             variant={layer.fontStyle.includes("italic") ? "secondary" : "ghost"}
           >
-            <Italic className="size-3.5" />
+            <Italic className="size-4" />
           </Button>
         </div>
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
-            Fill
+            Color
           </label>
-          <input
-            className="h-8 w-full cursor-pointer rounded border border-border"
-            onChange={(e) => onUpdate({ fill: e.target.value })}
-            type="color"
+          <ColorPicker
+            onValueChange={(fill) => onUpdate({ fill })}
             value={layer.fill}
-          />
+          >
+            <ColorPickerTrigger
+              className="w-full justify-start gap-2 px-2 text-left font-normal"
+              variant="outline"
+            >
+              <div
+                className="size-4 rounded border border-border"
+                style={{ backgroundColor: layer.fill }}
+              />
+              <span className="truncate">{layer.fill}</span>
+            </ColorPickerTrigger>
+            <ColorPickerContent>
+              <ColorPickerArea className="h-40 w-full rounded-md border" />
+              <div className="mt-4 flex flex-col gap-2">
+                <ColorPickerHueSlider />
+                <ColorPickerAlphaSlider />
+              </div>
+              <div className="mt-4">
+                <ColorPickerInput />
+              </div>
+            </ColorPickerContent>
+          </ColorPicker>
         </div>
         <div className="flex-1">
           <label className="mb-1 block text-muted-foreground text-xs">
             Stroke
           </label>
-          <input
-            className="h-8 w-full cursor-pointer rounded border border-border"
-            onChange={(e) => onUpdate({ stroke: e.target.value })}
-            type="color"
-            value={layer.stroke || "#000000"}
-          />
+          <ColorPicker
+            onValueChange={(stroke) => onUpdate({ stroke })}
+            value={layer.stroke || "#00000000"}
+          >
+            <ColorPickerTrigger
+              className="w-full justify-start gap-2 px-2 text-left font-normal"
+              variant="outline"
+            >
+              <div
+                className="size-4 rounded border border-border"
+                style={{ backgroundColor: layer.stroke || "transparent" }}
+              />
+              <span className="truncate">{layer.stroke || "None"}</span>
+            </ColorPickerTrigger>
+            <ColorPickerContent>
+              <ColorPickerArea className="h-40 w-full rounded-md border" />
+              <div className="mt-4 flex flex-col gap-2">
+                <ColorPickerHueSlider />
+                <ColorPickerAlphaSlider />
+              </div>
+              <div className="mt-4">
+                <ColorPickerInput />
+              </div>
+            </ColorPickerContent>
+          </ColorPicker>
         </div>
       </div>
       <div>
-        <label className="mb-1 block text-muted-foreground text-xs">
-          Stroke Width
-        </label>
-        <input
-          className="w-full"
-          max={10}
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-muted-foreground text-xs">Stroke Width</label>
+          <span className="text-muted-foreground text-xs">
+            {layer.strokeWidth}px
+          </span>
+        </div>
+        <Slider
+          max={20}
           min={0}
-          onChange={(e) => onUpdate({ strokeWidth: Number(e.target.value) })}
+          onValueChange={(value) => onUpdate({ strokeWidth: value[0] })}
           step={1}
-          type="range"
-          value={layer.strokeWidth}
+          value={[layer.strokeWidth || 0]}
         />
       </div>
     </>

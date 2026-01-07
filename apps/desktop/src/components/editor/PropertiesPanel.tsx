@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ImageProperties } from "@/components/editor/image-properties";
 import { ShadowProperties } from "@/components/editor/shadow-properties";
 import { ShapeProperties } from "@/components/editor/shape-properties";
 import { TextProperties } from "@/components/editor/text-properties";
+import { Slider } from "@/components/ui/slider";
 import {
+  type ImageLayer,
   type Layer,
   type ShapeLayer,
   type TextLayer,
@@ -41,24 +45,19 @@ async function getSystemFonts(): Promise<string[]> {
 }
 
 export function PropertiesPanel() {
-  const { layers, activeLayerId, updateLayer, pushHistory } = useEditorStore();
-  const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const { layers, activeLayerIds, updateLayer, pushHistory } = useEditorStore();
+  const activeLayer =
+    activeLayerIds.length === 1
+      ? layers.find((l) => l.id === activeLayerIds[0])
+      : null;
+  const isMultiple = activeLayerIds.length > 1;
+
   const [fontFamilies, setFontFamilies] = useState<string[]>(FALLBACK_FONTS);
   const lastPushRef = useRef<number>(0);
 
   useEffect(() => {
     getSystemFonts().then(setFontFamilies);
   }, []);
-
-  if (!activeLayer) {
-    return (
-      <div className="flex h-full w-full items-center justify-center border-border border-l bg-background p-4">
-        <p className="text-center text-muted-foreground text-sm">
-          Select a layer to edit properties
-        </p>
-      </div>
-    );
-  }
 
   const pushHistoryDebounced = () => {
     const now = Date.now();
@@ -70,11 +69,37 @@ export function PropertiesPanel() {
 
   const updateWithHistory = (updates: Partial<Layer>) => {
     pushHistoryDebounced();
-    updateLayer(activeLayer.id, updates);
+    if (isMultiple) {
+      activeLayerIds.forEach((id) => updateLayer(id, updates));
+    } else if (activeLayer) {
+      updateLayer(activeLayer.id, updates);
+    }
+  };
+
+  if (!(activeLayer || isMultiple)) {
+    return (
+      <div className="flex h-full w-full items-center justify-center border-border border-l bg-background p-4">
+        <p className="text-center text-muted-foreground text-sm">
+          Select a layer to edit properties
+        </p>
+      </div>
+    );
+  }
+
+  const handleRefreshFonts = async () => {
+    toast.message("Refreshing fonts...");
+    try {
+      const fonts = await getSystemFonts();
+      console.log("Loaded fonts:", fonts);
+      setFontFamilies(fonts);
+      toast.success(`Found ${fonts.length} fonts. Check console for list.`);
+    } catch (e) {
+      toast.error("Failed to load fonts");
+    }
   };
 
   return (
-    <div className="w-full shrink-0 overflow-y-auto border-border border-l bg-background">
+    <div className="h-full w-full shrink-0 overflow-y-auto border-border border-l bg-background">
       <div className="border-border border-b px-4 py-3">
         <span className="font-semibold text-muted-foreground text-xs uppercase">
           Properties
@@ -83,28 +108,33 @@ export function PropertiesPanel() {
       <div className="space-y-4 p-4">
         {/* Common: Opacity */}
         <div>
-          <label className="mb-1 block text-muted-foreground text-xs">
-            Opacity
-          </label>
-          <input
-            className="w-full"
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-muted-foreground text-xs">Opacity</label>
+            <span className="text-muted-foreground text-xs">
+              {Math.round((activeLayer ? activeLayer.opacity : 1) * 100)}%
+            </span>
+          </div>
+          <Slider
             max={1}
             min={0}
-            onChange={(e) =>
-              updateWithHistory({ opacity: Number(e.target.value) })
-            }
-            step={0.05}
-            type="range"
-            value={activeLayer.opacity}
+            onValueChange={(value) => updateWithHistory({ opacity: value[0] })}
+            step={0.01}
+            value={[activeLayer ? activeLayer.opacity : 1]}
           />
+          {isMultiple && (
+            <p className="mt-2 text-center text-muted-foreground text-xs">
+              {activeLayerIds.length} items selected
+            </p>
+          )}
         </div>
 
         {/* Text-specific properties */}
-        {activeLayer.type === "text" && (
+        {activeLayer?.type === "text" && (
           <>
             <TextProperties
               fontFamilies={fontFamilies}
               layer={activeLayer as TextLayer}
+              onRefreshFonts={handleRefreshFonts}
               onUpdate={updateWithHistory}
             />
             <ShadowProperties
@@ -115,7 +145,7 @@ export function PropertiesPanel() {
         )}
 
         {/* Shape-specific properties */}
-        {activeLayer.type === "shape" && (
+        {activeLayer?.type === "shape" && (
           <ShapeProperties
             layer={activeLayer as ShapeLayer}
             onUpdate={updateWithHistory}
@@ -123,10 +153,11 @@ export function PropertiesPanel() {
         )}
 
         {/* Image-specific */}
-        {activeLayer.type === "image" && (
-          <p className="text-muted-foreground text-xs">
-            Drag handles to resize and rotate.
-          </p>
+        {activeLayer?.type === "image" && (
+          <ImageProperties
+            layer={activeLayer as ImageLayer}
+            onUpdate={updateWithHistory}
+          />
         )}
       </div>
     </div>

@@ -306,7 +306,17 @@ export function ImageEditor({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
+      // Ignore if typing in an input
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      if (isCtrlOrMeta) {
         if (e.key === "s") {
           e.preventDefault();
           handleSave();
@@ -316,6 +326,68 @@ export function ImageEditor({
         } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
           e.preventDefault();
           redo();
+        } else if (e.key === "c") {
+          e.preventDefault();
+          // Copy
+          useEditorStore.getState().copyLayers();
+        } else if (e.key === "v") {
+          e.preventDefault();
+          // Paste
+          useEditorStore.getState().pasteLayers();
+        }
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        const { activeLayerIds, removeLayers } = useEditorStore.getState();
+        if (activeLayerIds.length > 0) {
+          removeLayers(activeLayerIds);
+        }
+      } else if (!isCtrlOrMeta) {
+        // Tool shortcuts
+        const store = useEditorStore.getState();
+
+        if (e.key.toLowerCase() === "v") {
+          e.preventDefault();
+          store.setActiveTool("select");
+          toast.info("Select Tool (V)");
+        } else if (e.key.toLowerCase() === "t") {
+          e.preventDefault();
+          store.addTextLayer("Your Text");
+          // Center the new layer
+          const newId = store.activeLayerIds[0];
+          if (newId) {
+            store.updateLayer(newId, {
+              x: store.canvasWidth / 2 - 100,
+              y: store.canvasHeight / 2 - 24,
+            });
+          }
+          store.setActiveTool("select");
+          toast.info("Added Text (T)");
+        } else if (e.key.toLowerCase() === "r") {
+          e.preventDefault();
+          store.addShapeLayer("rect");
+          // Center the new layer
+          const newId = store.activeLayerIds[0];
+          if (newId) {
+            store.updateLayer(newId, {
+              x: store.canvasWidth / 2 - 100,
+              y: store.canvasHeight / 2 - 75,
+            });
+          }
+          store.setActiveTool("select");
+          toast.info("Added Rectangle (R)");
+        } else if (e.key.toLowerCase() === "o") {
+          e.preventDefault();
+          store.addShapeLayer("ellipse");
+          // Center the new layer
+          const newId = store.activeLayerIds[0];
+          if (newId) {
+            store.updateLayer(newId, {
+              x: store.canvasWidth / 2 - 100,
+              y: store.canvasHeight / 2 - 75,
+            });
+          }
+          store.setActiveTool("select");
+          toast.info("Added Ellipse (O)");
         }
       }
     };
